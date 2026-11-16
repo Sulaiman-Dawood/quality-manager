@@ -27,7 +27,10 @@
         <option value="reddit">Reddit</option>
         <option value="youtube">YouTube</option>
         <option value="instagram">Instagram</option>
+        <option value="threads">Threads</option>
         <option value="linkedin">LinkedIn</option>
+        <option value="tiktok">TikTok</option>
+        <option value="bluesky">Bluesky</option>
         <option value="general">General (all sites)</option>
       </select>
     </div>
@@ -111,6 +114,20 @@
       </div>
     </section>
 
+    <!-- Threads -->
+    <section class="page site-page" id="page-threads" data-site="threads" aria-label="Threads settings" hidden>
+      <div class="row site-toggle">
+        <label for="threads_enabled">Enabled on Threads</label>
+        <label class="switch"><input type="checkbox" id="threads_enabled"><span></span></label>
+      </div>
+      <div class="site-options group">
+        <div class="row">
+          <label for="threads_videoQuality" title="Threads' web player has no quality setting and picks the quality on its own.">Video quality</label>
+          <select id="threads_videoQuality" data-quality></select>
+        </div>
+      </div>
+    </section>
+
     <!-- LinkedIn -->
     <section class="page site-page" id="page-linkedin" data-site="linkedin" aria-label="LinkedIn settings" hidden>
       <div class="row site-toggle">
@@ -129,6 +146,34 @@
             <option value="small">Data saver</option>
             <option value="default">Site default</option>
           </select>
+        </div>
+      </div>
+    </section>
+
+    <!-- TikTok -->
+    <section class="page site-page" id="page-tiktok" data-site="tiktok" aria-label="TikTok settings" hidden>
+      <div class="row site-toggle">
+        <label for="tiktok_enabled">Enabled on TikTok</label>
+        <label class="switch"><input type="checkbox" id="tiktok_enabled"><span></span></label>
+      </div>
+      <div class="site-options group">
+        <div class="row">
+          <label for="tiktok_videoQuality" title="TikTok's web player picks the quality on its own, often below the best it has.">Video quality</label>
+          <select id="tiktok_videoQuality" data-quality></select>
+        </div>
+      </div>
+    </section>
+
+    <!-- Bluesky -->
+    <section class="page site-page" id="page-bluesky" data-site="bluesky" aria-label="Bluesky settings" hidden>
+      <div class="row site-toggle">
+        <label for="bluesky_enabled">Enabled on Bluesky</label>
+        <label class="switch"><input type="checkbox" id="bluesky_enabled"><span></span></label>
+      </div>
+      <div class="site-options group">
+        <div class="row">
+          <label for="bluesky_videoQuality" title="Bluesky's player has no quality setting and starts videos at its lowest quality.">Video quality</label>
+          <select id="bluesky_videoQuality" data-quality></select>
         </div>
       </div>
     </section>

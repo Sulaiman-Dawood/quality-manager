@@ -1,9 +1,9 @@
 // Runs in the page's own JS world (MAIN) at document_start, before the
-// site's player code, on sites that stream HLS/DASH (X, Reddit, Instagram,
-// LinkedIn). Intercepts master playlists / MPDs the player fetches -- or, on
-// Instagram, the API responses that carry MPDs inside their JSON; on
-// LinkedIn, the quality list handed to the player as JSON -- and rewrites
-// them to the quality the user chose.
+// site's player code, on X, Reddit, Instagram, Threads, LinkedIn, TikTok
+// and Bluesky. Intercepts master playlists / MPDs the player fetches
+// -- or, on Meta sites, the API responses and page data that carry MPDs
+// inside their JSON; on LinkedIn and TikTok, the quality lists in the data
+// the app unpacks -- and rewrites them to the quality the user chose.
 (function () {
   'use strict';
   if (window.__QM_STREAM_HOOKED__) return;
@@ -34,8 +34,14 @@
   window.addEventListener('qm-settings', (e) => {
     current();
     loadSettings(e.detail);
-    if (settings && (settings.imageData || settings.vhsJson)) hookParse();
+    if (wantsParse()) hookParse();
   });
+
+  // Sites whose quality data is unpacked with JSON.parse (see hookParse).
+  function wantsParse() {
+    return !!(settings && (settings.imageData || settings.vhsJson || settings.bitrateJson ||
+      (settings.manifestPaths && settings.manifestPaths.length)));
+  }
 
   function active() {
     const s = current();
@@ -103,6 +109,21 @@
     return { text: out + text.slice(from), changed: true };
   }
 
+  // ---- Meta (Instagram, Threads): MPDs inside the app's data ---------------
+  // Rewrites every MPD in a chunk of the app's JSON; null when nothing changed.
+  function rewriteMetaJson(text, opts) {
+    if (!DASH.hasEmbedded(text)) return null;
+    const r = DASH.rewriteEmbedded(text, opts);
+    return r.changed ? r.text : null;
+  }
+
+  function metaOpts() {
+    const s = current();
+    if (!s || !s.enabled || !(s.manifestPaths && s.manifestPaths.length)) return null;
+    if (s.videoQuality === 'auto' && !s.bestAudio) return null;
+    return { quality: s.videoQuality, bestAudio: s.bestAudio };
+  }
+
   // ---- LinkedIn: the player's quality list ----------------------------------
   // LinkedIn's Video.js player gets each video as a ready-made list
   // ("data:application/vnd.videojs.vhs+json,{...}") rather than downloading
@@ -132,13 +153,62 @@
     return s && s.enabled && s.vhsJson && s.videoQuality !== 'auto' ? s.videoQuality : null;
   }
 
+  // ---- TikTok: each video's "bitrateInfo" list ------------------------------
+  // Every TikTok video comes with a list of ready-made MP4s (e.g. 1080p,
+  // 720p and 540p, in H.265 and H.264), and the player picks one itself.
+  // Keep only the entries at the chosen size, every codec at it, so the
+  // player can still choose one the browser plays.
+  function isBitrateEntry(b) {
+    return b && typeof b === 'object' && b.PlayAddr && b.PlayAddr.Width > 0 && b.PlayAddr.Height > 0 &&
+      Array.isArray(b.PlayAddr.UrlList) && b.PlayAddr.UrlList.length > 0;
+  }
+
+  function filterBitrateInfo(video, quality) {
+    const list = video.bitrateInfo;
+    if (!Array.isArray(list) || list.length < 2 || !list.every(isBitrateEntry)) return false;
+    const variants = list.map((b) => ({ width: b.PlayAddr.Width, height: b.PlayAddr.Height, bandwidth: +b.Bitrate || 0 }));
+    const chosen = HLS.pickVariant(variants, quality);
+    if (!chosen) return false;
+    const size = HLS.shortSide(chosen);
+    const keep = list.filter((b) => HLS.shortSide({ width: b.PlayAddr.Width, height: b.PlayAddr.Height }) === size);
+    if (!keep.length || keep.length === list.length) return false;
+    video.bitrateInfo = keep;
+    // The single fallback address, used when the list isn't: point it at a
+    // kept H.264 file (plays everywhere) if it isn't one of them already.
+    if (typeof video.playAddr === 'string' && !keep.some((b) => b.PlayAddr.UrlList.includes(video.playAddr))) {
+      const h264 = keep.find((b) => /264/.test(String(b.CodecType)));
+      if (h264) video.playAddr = h264.PlayAddr.UrlList[0];
+    }
+    return true;
+  }
+
+  // Walks the app's data for video objects (they sit a few levels deep, in
+  // lists of posts). Returns true when something changed.
+  function filterTikTok(data, quality, depth) {
+    if (!data || typeof data !== 'object' || depth > 12) return false;
+    if (Array.isArray(data.bitrateInfo)) return filterBitrateInfo(data, quality);
+    let changed = false;
+    for (const key in data) {
+      const v = data[key];
+      if (v && typeof v === 'object' && filterTikTok(v, quality, depth + 1)) changed = true;
+    }
+    return changed;
+  }
+
+  function bitrateQuality() {
+    const s = current();
+    return s && s.enabled && s.bitrateJson && s.videoQuality !== 'auto' ? s.videoQuality : null;
+  }
+
   // The first posts come bundled inside the page rather than from the API,
   // so they never pass through the hooks below. All of the app's data, from
-  // either source, is unpacked with JSON.parse, so trim photo sizes there.
+  // either source, is unpacked with JSON.parse, so trim photo sizes and
+  // rewrite Meta's MPDs there too.
   // Strings without a "candidates" list pass straight through.
   // Installed only on sites whose settings say they need it (Instagram
-  // photos, LinkedIn's player), so other sites' JSON.parse calls never run
-  // through here.
+  // photos, LinkedIn's player, TikTok), so other sites' JSON.parse calls
+  // never run through here. On TikTok, API responses read with
+  // response.json() are filtered too.
   function hookParse() {
     if (parseHooked) return;
     parseHooked = true;
@@ -150,6 +220,15 @@
           if (r.changed) text = r.text;
         } catch (_) { /* parse the original */ }
       }
+      if (typeof text === 'string' && text.length > 200 && DASH.hasEmbedded(text)) {
+        const opts = metaOpts();
+        if (opts) {
+          try {
+            const r = rewriteMetaJson(text, opts);
+            if (r !== null) text = r;
+          } catch (_) { /* parse the original */ }
+        }
+      }
       const result = origParse.call(this, text, reviver);
       if (typeof text === 'string' && text.startsWith('{"allowCache"')) {
         try {
@@ -157,10 +236,35 @@
           if (q && isVhsList(result)) filterVhsList(result, q);
         } catch (_) { /* leave the list as it is */ }
       }
+      if (typeof text === 'string' && text.length > 200 && result && typeof result === 'object') {
+        const q = bitrateQuality();
+        if (q && text.includes('"bitrateInfo"')) {
+          try { filterTikTok(result, q, 0); } catch (_) { /* leave it */ }
+        }
+      }
       return result;
     };
+    if (settings.bitrateJson && typeof Response === 'function' && Response.prototype.json) {
+      const RPJ = Response.prototype;
+      const origJson = RPJ.json;
+      RPJ.json = function () {
+        const pending = origJson.apply(this, arguments);
+        let mine = false;
+        try {
+          const u = new URL(this.url, location.href);
+          mine = u.origin === location.origin && u.pathname.startsWith('/api/');
+        } catch (_) { /* not a URL */ }
+        if (!mine) return pending;
+        return pending.then((data) => {
+          const q = bitrateQuality();
+          if (q) { try { filterTikTok(data, q, 0); } catch (_) { /* leave it */ } }
+          return data;
+        });
+      };
+    }
   }
-  if (current() && (settings.imageData || settings.vhsJson)) hookParse();
+  current();
+  if (wantsParse()) hookParse();
 
   function hostMatches(hostname, domain) {
     return hostname === domain || hostname.endsWith('.' + domain);
@@ -196,8 +300,8 @@
       if (kind === 'json') {
         let changed = false;
         if (settings.videoQuality !== 'auto' || settings.bestAudio) {
-          const r = DASH.rewriteEmbedded(text, opts);
-          if (r.changed) { text = r.text; changed = true; }
+          const r = rewriteMetaJson(text, opts);
+          if (r !== null) { text = r; changed = true; }
         }
         if (trimImages()) {
           const r = trimImageCandidates(text);
@@ -216,15 +320,37 @@
   const origOpen = XHR.open;
   XHR.open = function (method, url) {
     try { this.__qmUrl = url instanceof URL ? url.href : String(url); } catch (_) { this.__qmUrl = null; }
-    this.__qmIn = this.__qmOut = undefined;
+    this.__qmIn = this.__qmOut = this.__qmStream = undefined;
     return origOpen.apply(this, arguments);
   };
 
+  // Meta's apps (Threads, Instagram) read their API responses
+  // while they are still arriving (readyState 3): one JSON object per line,
+  // and each read picks up after the text the previous read returned. So
+  // rewrite each complete line once and hand back only complete lines (a
+  // half-arrived line waits for the next read). Every read then returns the
+  // previous text plus more, as the app expects.
+  function streamedJson(xhr, value, url) {
+    let state = xhr.__qmStream;
+    if (!state || value.length < state.raw) state = xhr.__qmStream = { raw: 0, out: '' };
+    const end = xhr.readyState === 4 ? value.length : value.lastIndexOf('\n') + 1;
+    if (end > state.raw) {
+      const chunk = value.slice(state.raw, end);
+      const r = rewrite('json', chunk, url);
+      state.out += r === null ? chunk : r;
+      state.raw = end;
+    }
+    return state.out;
+  }
+
   function rewrittenBody(xhr, value) {
-    if (xhr.readyState !== 4 || !active()) return value;
+    const done = xhr.readyState === 4;
+    if (!(done || (xhr.readyState === 3 && typeof value === 'string')) || !active()) return value;
     const url = xhr.responseURL || xhr.__qmUrl;
     const kind = streamKind(url);
     if (!kind) return value;
+    if (kind === 'json' && typeof value === 'string') return streamedJson(xhr, value, url);
+    if (!done) return value;
     if (xhr.__qmIn === value) return xhr.__qmOut;
 
     let out = value;

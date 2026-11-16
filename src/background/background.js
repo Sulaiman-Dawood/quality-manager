@@ -1,6 +1,5 @@
 // Service worker: turns settings into declarativeNetRequest redirect rules
-// (one module per site in ./sites), and adds the "open / save original
-// image" context menu items.
+// (one module per site in ./sites).
 importScripts('../shared/config.js', 'sites/x.js', 'sites/reddit.js');
 
 const CONFIG = self.QM_CONFIG;
@@ -68,48 +67,6 @@ function applyRules() {
   return ruleQueue;
 }
 
-// ---- Context menu -------------------------------------------------------
-const MENU_OPEN = 'qm-open-orig';
-const MENU_SAVE = 'qm-save-orig';
-const IMAGE_PATTERNS = Object.values(SITE_RULES).flatMap((m) => m.imagePatterns);
-
-function originalImage(src) {
-  for (const mod of Object.values(SITE_RULES)) {
-    try {
-      const r = mod.originalImageUrl(src);
-      if (r) return r;
-    } catch (_) { /* not this site's URL */ }
-  }
-  return null;
-}
-
-function createMenus() {
-  chrome.contextMenus.removeAll(() => {
-    chrome.contextMenus.create({
-      id: MENU_OPEN,
-      title: 'Open original-quality image',
-      contexts: ['image'],
-      targetUrlPatterns: IMAGE_PATTERNS,
-    });
-    chrome.contextMenus.create({
-      id: MENU_SAVE,
-      title: 'Save original-quality image',
-      contexts: ['image'],
-      targetUrlPatterns: IMAGE_PATTERNS,
-    });
-  });
-}
-
-chrome.contextMenus.onClicked.addListener((info, tab) => {
-  const img = info.srcUrl && originalImage(info.srcUrl);
-  if (!img) return;
-  if (info.menuItemId === MENU_OPEN) {
-    chrome.tabs.create({ url: img.url, index: tab ? tab.index + 1 : undefined, openerTabId: tab ? tab.id : undefined });
-  } else if (info.menuItemId === MENU_SAVE) {
-    chrome.downloads.download({ url: img.url, filename: img.filename, saveAs: false });
-  }
-});
-
 // ---- Lifecycle ------------------------------------------------------------
 chrome.runtime.onInstalled.addListener(async () => {
   const stored = await chrome.storage.sync.get(null);
@@ -121,7 +78,6 @@ chrome.runtime.onInstalled.addListener(async () => {
   }
   if (Object.keys(set).length) await chrome.storage.sync.set(set);
   if (remove.length) await chrome.storage.sync.remove(remove);
-  createMenus();
   applyRules();
 });
 
@@ -134,5 +90,4 @@ chrome.storage.onChanged.addListener((changes, area) => {
 // Exposed for tests (Node) — harmless in the extension.
 self.__QM_BUILD_RULES__ = buildRules;
 self.__QM_KEEP_SUPPORTED__ = keepSupportedRules;
-self.__QM_ORIGINAL_IMAGE__ = originalImage;
 self.__QM_APPLY_RULES__ = applyRules;

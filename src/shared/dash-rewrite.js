@@ -1,6 +1,7 @@
 // Pure DASH (MPD) rewriter -- the DASH counterpart of hls-rewrite.js.
-// Reddit offers DASHPlaylist.mpd alongside HLS; Instagram (Meta) embeds the
-// MPD as a string inside its API JSON ("video_dash_manifest"). Each video
+// Reddit offers DASHPlaylist.mpd alongside HLS; Meta (Instagram, Threads)
+// embeds the MPD as a string inside its API JSON ("video_dash_manifest").
+// Each video
 // AdaptationSet lists one Representation per resolution; we keep only the
 // one the user picked (and the best audio Representation when bestAudio is
 // on). String-based so it runs in the page and in Node tests alike.
@@ -92,12 +93,17 @@
   // response is left byte-for-byte as it was.
   const EMBEDDED_RE = /"(video_dash_manifest|dash_manifest)":"((?:[^"\\]|\\.)*)"/g;
 
+  function hasEmbedded(text) {
+    return typeof text === 'string' && text.includes('dash_manifest"');
+  }
+
   function rewriteEmbedded(text, opts) {
-    if (typeof text !== 'string' || !text.includes('dash_manifest"')) return { text, changed: false, count: 0 };
+    if (!hasEmbedded(text)) return { text, changed: false, count: 0 };
     let count = 0;
     const out = text.replace(EMBEDDED_RE, (whole, key, literal) => {
       let xml;
       try { xml = JSON.parse('"' + literal + '"'); } catch (_) { return whole; }
+      if (!isMpd(xml)) return whole;
       const r = rewriteMpd(xml, opts);
       if (!r.changed) return whole;
       count++;
@@ -106,7 +112,7 @@
     return { text: out, changed: count > 0, count };
   }
 
-  const api = { rewriteMpd, rewriteEmbedded, isMpd };
+  const api = { rewriteMpd, rewriteEmbedded, hasEmbedded, isMpd };
   if (IS_NODE) module.exports = api;
   else root.__QM_DASH__ = api;
 })(typeof globalThis !== 'undefined' ? globalThis : this);

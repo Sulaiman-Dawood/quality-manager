@@ -40,19 +40,8 @@
     return rules;
   }
 
-  function originalImageUrl(src) {
-    const u = new URL(src);
-    let file = null;
-    if (u.hostname === 'i.redd.it') file = u.pathname.slice(1);
-    else if (u.hostname === 'preview.redd.it') file = u.pathname.slice(1).replace(/^.*-v0-/, '');
-    if (!file || !/^[a-z0-9]+\.[a-z0-9]+$/i.test(file)) return null;
-    return { url: 'https://i.redd.it/' + file, filename: file };
-  }
-
   root.QM_SITE_RULES = root.QM_SITE_RULES || {};
   root.QM_SITE_RULES.reddit = {
     buildRules,
-    originalImageUrl,
-    imagePatterns: ['https://preview.redd.it/*', 'https://i.redd.it/*'],
   };
 })(typeof self !== 'undefined' ? self : globalThis);

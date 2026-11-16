@@ -214,13 +214,17 @@ test('site detection', () => {
   assert.strictEqual(CONFIG.siteForHost('m.youtube.com'), 'youtube');
   assert.strictEqual(CONFIG.siteForHost('www.youtube-nocookie.com'), 'youtube');
   assert.strictEqual(CONFIG.siteForHost('www.linkedin.com'), 'linkedin');
+  assert.strictEqual(CONFIG.siteForHost('www.tiktok.com'), 'tiktok');
+  assert.strictEqual(CONFIG.siteForHost('bsky.app'), 'bluesky');
+  assert.strictEqual(CONFIG.siteForHost('www.threads.com'), 'threads');
+  assert.strictEqual(CONFIG.siteForHost('www.facebook.com'), null);
   assert.strictEqual(CONFIG.siteForHost('notreddit.com'), null);
   assert.strictEqual(CONFIG.siteForHost('example.com'), null);
 });
 
 test('pageSettings respects global and per-site switches', () => {
   const s = Object.assign({}, CONFIG.DEFAULTS, { reddit_videoQuality: '720' });
-  assert.deepStrictEqual(CONFIG.pageSettings(s, 'reddit'), { enabled: true, videoQuality: '720', bestAudio: true, images: 'orig', imageData: false, streamHosts: ['v.redd.it'], manifestPaths: [], vhsJson: false });
+  assert.deepStrictEqual(CONFIG.pageSettings(s, 'reddit'), { enabled: true, videoQuality: '720', bestAudio: true, images: 'orig', imageData: false, streamHosts: ['v.redd.it'], manifestPaths: [], vhsJson: false, bitrateJson: false });
   assert.strictEqual(CONFIG.pageSettings(Object.assign({}, s, { reddit_enabled: false }), 'reddit').enabled, false);
   assert.strictEqual(CONFIG.pageSettings(Object.assign({}, s, { enabled: false }), 'x').enabled, false);
 });
@@ -257,7 +261,6 @@ function loadBackground() {
     chrome: {
       runtime: { onInstalled: listeners(), onStartup: listeners() },
       storage: { onChanged: listeners(), sync: {} },
-      contextMenus: { onClicked: listeners() },
       declarativeNetRequest: {},
     },
   };
@@ -509,19 +512,6 @@ test('overlapping rule updates (install + storage change) do not collide on ids'
   } finally {
     bg.console = origConsole;
   }
-});
-
-test('context menu original image URLs', () => {
-  // Results come from the background's VM realm: compare as plain data.
-  const o = (src) => JSON.parse(JSON.stringify(bg.__QM_ORIGINAL_IMAGE__(src)));
-  assert.deepStrictEqual(o('https://pbs.twimg.com/media/Gab?format=jpg&name=large'),
-    { url: 'https://pbs.twimg.com/media/Gab?format=jpg&name=orig', filename: 'Gab.jpg' });
-  assert.deepStrictEqual(o('https://pbs.twimg.com/media/Gab.png:large'),
-    { url: 'https://pbs.twimg.com/media/Gab?format=png&name=orig', filename: 'Gab.png' });
-  assert.deepStrictEqual(o('https://preview.redd.it/some-title-v0-q9w8e7.jpeg?width=640&s=1'),
-    { url: 'https://i.redd.it/q9w8e7.jpeg', filename: 'q9w8e7.jpeg' });
-  assert.deepStrictEqual(o('https://i.redd.it/abc.png'), { url: 'https://i.redd.it/abc.png', filename: 'abc.png' });
-  assert.strictEqual(o('https://example.com/a.jpg'), null);
 });
 
 // =========================================================================
@@ -966,6 +956,65 @@ test('Instagram: registered as a site with its API paths', () => {
   assert.deepStrictEqual(CONFIG.pageSettings(CONFIG.DEFAULTS, 'x').manifestPaths, []);
 });
 
+section('Threads');
+
+// A Meta MPD as Threads serves it (labels 240p..1080p, display-size width/height).
+const THREADS_LABELS = [240, 360, 480, 720, 1080];
+function threadsMpd() {
+  const rep = (l) => `<Representation id="42${l}v" mimeType="video/mp4" codecs="vp09.00.31.08" width="1280" height="720" bandwidth="${l * 1000}" FBQualityLabel="${l}p"><BaseURL>https://scontent.cdninstagram.com/o1/v/t2/f2/m86/V${l}.mp4?_nc_ht=x&amp;oh=1</BaseURL><SegmentBase indexRange="800-900"><Initialization range="0-799"/></SegmentBase></Representation>`;
+  return `<?xml version="1.0" encoding="UTF-8"?>\n<MPD xmlns="urn:mpeg:dash:schema:mpd:2011" type="static"><Period><AdaptationSet segmentAlignment="true">${THREADS_LABELS.map(rep).join('')}</AdaptationSet><AdaptationSet><Representation id="41a" mimeType="audio/mp4" codecs="mp4a.40.5" bandwidth="66466"><BaseURL>https://scontent.cdninstagram.com/A.mp4</BaseURL></Representation></AdaptationSet></Period></MPD>`;
+}
+const threadsLabels = (mpd) => [...mpd.matchAll(/FBQualityLabel="(\d+p)"/g)].map((m) => m[1]);
+
+function threadsXhr(body) {
+  return class FakeXHR {
+    open(method, url) { this._url = url; }
+    get readyState() { return 4; }
+    get responseURL() { return new URL(this._url, 'https://www.threads.com/').href; }
+    get responseText() { return body; }
+    get response() { return body; }
+  };
+}
+
+test('Threads: responses read while still arriving get every line rewritten, prefix by prefix', () => {
+  // The app reads responseText at readyState 3 and again at 4, each time
+  // taking the text after what it already has. One JSON object per line.
+  const line = (n) => JSON.stringify({ data: { post: { pk: n, video_dash_manifest: threadsMpd() } } });
+  const full = line(1) + '\n' + line(2) + '\n' + line(3);
+  const parts = [full.slice(0, full.indexOf('\n') + 40), full.slice(0, full.lastIndexOf('\n') + 1), full];
+  let state = 0;
+  class StreamXHR {
+    open(method, url) { this._url = url; state = 0; }
+    get readyState() { return state < 2 ? 3 : 4; }
+    get responseURL() { return 'https://www.threads.com/graphql/query'; }
+    get responseText() { return parts[state]; }
+  }
+  const settings = Object.assign({}, CONFIG.pageSettings(CONFIG.DEFAULTS, 'threads'), { videoQuality: 'min' });
+  const page = loadPage('www.threads.com', STREAM_FILES, { XMLHttpRequest: StreamXHR, fetch: async () => {} }, settings);
+  const xhr = new page.XMLHttpRequest();
+  xhr.open('POST', '/graphql/query');
+  const reads = [];
+  for (state = 0; state < 3; state++) reads.push(xhr.responseText);
+  // Only complete lines are handed out; each read extends the previous one.
+  assert.strictEqual(reads[0].split('\n').filter(Boolean).length, 1);
+  assert.ok(reads[1].startsWith(reads[0]) && reads[2].startsWith(reads[1]));
+  const lines = reads[2].split('\n');
+  assert.strictEqual(lines.length, 3);
+  for (const l of lines) assert.deepStrictEqual(threadsLabels(JSON.parse(l).data.post.video_dash_manifest), ['240p']);
+});
+
+test('Threads: same Meta MPDs as Instagram, from its API paths', () => {
+  assert.deepStrictEqual(CONFIG.pageSettings(CONFIG.DEFAULTS, 'threads').manifestPaths, ['/api/', '/graphql']);
+  assert.strictEqual(CONFIG.siteForHost('www.threads.net'), 'threads');
+  const body = JSON.stringify({ data: { post: { video_versions: [{ type: 101, url: 'https://x/v.mp4' }], video_dash_manifest: threadsMpd() } } });
+  const settings = Object.assign({}, CONFIG.pageSettings(CONFIG.DEFAULTS, 'threads'), { videoQuality: '480' });
+  const page = loadPage('www.threads.com', STREAM_FILES, { XMLHttpRequest: threadsXhr(body), fetch: async () => {} }, settings);
+  const xhr = new page.XMLHttpRequest();
+  xhr.open('POST', 'https://www.threads.com/graphql/query');
+  const mpd = JSON.parse(xhr.responseText).data.post.video_dash_manifest;
+  assert.deepStrictEqual([...mpd.matchAll(/FBQualityLabel="(\d+p)"/g)].map((m) => m[1]), ['480p']);
+});
+
 section('LinkedIn');
 
 // LinkedIn's Video.js player is handed each video's quality list as JSON
@@ -1011,6 +1060,98 @@ test('LinkedIn: registered, and only LinkedIn wraps JSON.parse for it', () => {
   assert.strictEqual(CONFIG.pageSettings(CONFIG.DEFAULTS, 'linkedin').vhsJson, true);
   const x = plainPage('x.com', Object.assign({}, CONFIG.pageSettings(CONFIG.DEFAULTS, 'x'), { videoQuality: 'min' }));
   assert.strictEqual(liSizes(x, LI_VIDEO).length, 6);
+});
+
+section('Bluesky');
+
+// A real Bluesky master playlist (video.bsky.app), shape and all.
+const BSKY_URL = 'https://video.bsky.app/watch/did%3Aplc%3Aabc/bafkreiabc/playlist.m3u8';
+const BSKY_MASTER = `#EXTM3U
+#EXT-X-VERSION:3
+#EXT-X-STREAM-INF:PROGRAM-ID=0,BANDWIDTH=710640,AVERAGE-BANDWIDTH=710640,CODECS="avc1.64001e",RESOLUTION=626x360
+360p/video.m3u8?session_id=s1
+#EXT-X-STREAM-INF:PROGRAM-ID=0,BANDWIDTH=2835792,AVERAGE-BANDWIDTH=2835792,CODECS="avc1.64001f",RESOLUTION=1252x720
+720p/video.m3u8?session_id=s1
+`;
+
+test('Bluesky: master playlists from video.bsky.app follow the setting (XHR)', () => {
+  for (const [q, want] of [['max', '720p'], ['min', '360p'], ['480', '360p']]) {
+    class FakeXHR {
+      open(method, url) { this._url = url; }
+      get readyState() { return 4; }
+      get responseURL() { return this._url; }
+      get responseText() { return BSKY_MASTER; }
+      get response() { return BSKY_MASTER; }
+    }
+    const settings = Object.assign({}, CONFIG.pageSettings(CONFIG.DEFAULTS, 'bluesky'), { videoQuality: q });
+    const page = loadPage('bsky.app', STREAM_FILES, { XMLHttpRequest: FakeXHR, fetch: async () => {} }, settings);
+    const xhr = new page.XMLHttpRequest();
+    xhr.open('GET', BSKY_URL);
+    assert.deepStrictEqual(streams(xhr.responseText), [`https://video.bsky.app/watch/did%3Aplc%3Aabc/bafkreiabc/${want}/video.m3u8?session_id=s1`], q);
+  }
+});
+
+section('TikTok');
+
+// Each TikTok video lists ready-made MP4s ("bitrateInfo"); shaped like the
+// data on tiktok.com/foryou (1080/720/540 in H.265, 540 in H.264).
+const TT_URL = (gear) => `https://v16-webapp.tiktokcdn-eu.com/sig/6afe0d5b/video/tos/alisg/${gear}/?a=1988&br=1`;
+function ttVideo(entries, playAddrGear) {
+  return {
+    id: '7', width: 576, height: 1024, definition: '540p', format: 'mp4',
+    playAddr: TT_URL(playAddrGear), downloadAddr: TT_URL('dl'),
+    bitrateInfo: entries.map(([w, h, br, codec, gear]) => ({
+      Bitrate: br, QualityType: 2, GearName: gear, CodecType: codec, Format: 'mp4',
+      PlayAddr: { Width: w, Height: h, Uri: gear, UrlList: [TT_URL(gear), TT_URL(gear) + '&b=2'], DataSize: 1 },
+    })),
+  };
+}
+const TT_ENTRIES = [
+  [1080, 1920, 2157597, 'h265_hvc1', 'adapt_lowest_1080_1'],
+  [720, 1280, 1161788, 'h265_hvc1', 'adapt_lower_720_1'],
+  [576, 1024, 968752, 'h265_hvc1', 'adapt_540_1'],
+  [576, 1024, 923009, 'h264', 'lowest_540_0'],
+];
+const ttFeed = () => JSON.stringify({ __DEFAULT_SCOPE__: { 'webapp.updated-items': [{ id: '7', video: ttVideo(TT_ENTRIES, 'lowest_540_0') }, { id: '8', desc: 'x'.repeat(250) }] } });
+const ttPage = (q, extra) => plainPage('www.tiktok.com', Object.assign({}, CONFIG.pageSettings(CONFIG.DEFAULTS, 'tiktok'), { videoQuality: q }, extra));
+const ttGears = (data) => Array.from(data.__DEFAULT_SCOPE__['webapp.updated-items'][0].video.bitrateInfo, (b) => b.GearName);
+const ttPlay = (data) => data.__DEFAULT_SCOPE__['webapp.updated-items'][0].video.playAddr;
+
+test('TikTok: page data keeps only the chosen size (every codec at it)', () => {
+  const max = pageJSON(ttPage('max')).parse(ttFeed());
+  assert.deepStrictEqual(ttGears(max), ['adapt_lowest_1080_1']);
+  assert.strictEqual(ttPlay(max), TT_URL('lowest_540_0'), 'no H.264 at 1080p: fallback address left alone');
+  const min = pageJSON(ttPage('min')).parse(ttFeed());
+  assert.deepStrictEqual(ttGears(min), ['adapt_540_1', 'lowest_540_0']);
+  assert.strictEqual(ttPlay(min), TT_URL('lowest_540_0'));
+  assert.deepStrictEqual(ttGears(pageJSON(ttPage('720')).parse(ttFeed())), ['adapt_lower_720_1']);
+  assert.deepStrictEqual(ttGears(pageJSON(ttPage('1080')).parse(ttFeed())), ['adapt_lowest_1080_1']);
+});
+
+test('TikTok: the fallback address follows the size when an H.264 file exists there', () => {
+  const entries = [[1080, 1920, 2000000, 'h264', 'normal_1080_0'], [576, 1024, 900000, 'h264', 'lowest_540_0']];
+  const text = JSON.stringify({ itemList: [{ video: ttVideo(entries, 'lowest_540_0') }], pad: 'x'.repeat(250) });
+  const out = pageJSON(ttPage('max')).parse(text);
+  assert.strictEqual(out.itemList[0].video.playAddr, TT_URL('normal_1080_0'));
+});
+
+test('TikTok: API responses read with response.json() are filtered (same origin /api/ only)', async () => {
+  const page = ttPage('min');
+  const body = JSON.stringify({ itemList: [{ video: ttVideo(TT_ENTRIES, 'lowest_540_0') }] });
+  const res = new page.Response(body, { status: 200 });
+  Object.defineProperty(res, 'url', { value: 'https://www.tiktok.com/api/recommend/item_list/?aid=1988' });
+  assert.strictEqual((await res.json()).itemList[0].video.bitrateInfo.length, 2);
+  const other = new page.Response(body, { status: 200 });
+  Object.defineProperty(other, 'url', { value: 'https://example.com/api/x' });
+  assert.strictEqual((await other.json()).itemList[0].video.bitrateInfo.length, 4);
+});
+
+test('TikTok: Site default and switched off leave the data alone; other sites never filter it', () => {
+  assert.strictEqual(ttGears(pageJSON(ttPage('auto')).parse(ttFeed())).length, 4);
+  assert.strictEqual(ttGears(pageJSON(ttPage('min', { enabled: false })).parse(ttFeed())).length, 4);
+  const x = plainPage('x.com', Object.assign({}, CONFIG.pageSettings(CONFIG.DEFAULTS, 'x'), { videoQuality: 'min' }));
+  assert.strictEqual(ttGears(pageJSON(x).parse(ttFeed())).length, 4);
+  assert.strictEqual(CONFIG.pageSettings(CONFIG.DEFAULTS, 'tiktok').bitrateJson, true);
 });
 
 // A tiny fake DOM element: enough for the bridge's badge layer.

@@ -78,26 +78,8 @@
     return rules;
   }
 
-  // "Open/save original" from the context menu.
-  function originalImageUrl(src) {
-    const u = new URL(src);
-    if (u.hostname !== 'pbs.twimg.com' || !u.pathname.startsWith('/media/')) return null;
-    // Legacy form: /media/ID.jpg:large
-    u.pathname = u.pathname.replace(/:(?:thumb|small|medium|large|orig)$/, '');
-    const ext = (u.pathname.match(/\.([a-z0-9]+)$/i) || [])[1];
-    if (ext) {
-      u.pathname = u.pathname.replace(/\.[a-z0-9]+$/i, '');
-      if (!u.searchParams.has('format')) u.searchParams.set('format', ext);
-    }
-    u.searchParams.set('name', 'orig');
-    const id = u.pathname.split('/').pop() || 'image';
-    return { url: u.href, filename: `${id}.${u.searchParams.get('format') || 'jpg'}` };
-  }
-
   root.QM_SITE_RULES = root.QM_SITE_RULES || {};
   root.QM_SITE_RULES.x = {
     buildRules,
-    originalImageUrl,
-    imagePatterns: ['https://pbs.twimg.com/media/*'],
   };
 })(typeof self !== 'undefined' ? self : globalThis);

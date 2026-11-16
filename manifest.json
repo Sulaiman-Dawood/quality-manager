@@ -1,8 +1,8 @@
 {
   "manifest_version": 3,
   "name": "Quality Manager",
-  "version": "1.1.0",
-  "description": "Control video and image quality on X, Reddit, YouTube, Instagram and LinkedIn: force the best, or save data.",
+  "version": "1.2.0",
+  "description": "Control video and image quality on X, Reddit, YouTube, Instagram, Threads, LinkedIn, TikTok and Bluesky: force the best, or save data.",
   "icons": {
     "16": "icons/icon16.png",
     "32": "icons/icon32.png",
@@ -22,9 +22,7 @@
   },
   "permissions": [
     "storage",
-    "declarativeNetRequestWithHostAccess",
-    "contextMenus",
-    "downloads"
+    "declarativeNetRequestWithHostAccess"
   ],
   "host_permissions": [
     "https://x.com/*",
@@ -41,8 +39,16 @@
     "https://*.youtube-nocookie.com/*",
     "https://instagram.com/*",
     "https://*.instagram.com/*",
+    "https://threads.com/*",
+    "https://*.threads.com/*",
+    "https://threads.net/*",
+    "https://*.threads.net/*",
     "https://linkedin.com/*",
-    "https://*.linkedin.com/*"
+    "https://*.linkedin.com/*",
+    "https://tiktok.com/*",
+    "https://*.tiktok.com/*",
+    "https://bsky.app/*",
+    "https://*.bsky.app/*"
   ],
   "content_scripts": [
     {
@@ -55,8 +61,16 @@
         "https://*.reddit.com/*",
         "https://instagram.com/*",
         "https://*.instagram.com/*",
+        "https://threads.com/*",
+        "https://*.threads.com/*",
+        "https://threads.net/*",
+        "https://*.threads.net/*",
         "https://linkedin.com/*",
-        "https://*.linkedin.com/*"
+        "https://*.linkedin.com/*",
+        "https://tiktok.com/*",
+        "https://*.tiktok.com/*",
+        "https://bsky.app/*",
+        "https://*.bsky.app/*"
       ],
       "js": [
         "src/shared/hls-rewrite.js",
@@ -105,8 +119,16 @@
         "https://*.youtube-nocookie.com/*",
         "https://instagram.com/*",
         "https://*.instagram.com/*",
+        "https://threads.com/*",
+        "https://*.threads.com/*",
+        "https://threads.net/*",
+        "https://*.threads.net/*",
         "https://linkedin.com/*",
-        "https://*.linkedin.com/*"
+        "https://*.linkedin.com/*",
+        "https://tiktok.com/*",
+        "https://*.tiktok.com/*",
+        "https://bsky.app/*",
+        "https://*.bsky.app/*"
       ],
       "js": [
         "src/shared/config.js",

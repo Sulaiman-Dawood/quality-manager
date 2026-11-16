@@ -36,10 +36,22 @@
     instagram_videoQuality: 'max',
     instagram_images: 'default', // 'small' | 'default'
 
+    // Threads
+    threads_enabled: true,
+    threads_videoQuality: 'max',
+
     // LinkedIn
     linkedin_enabled: true,
     linkedin_videoQuality: 'max',
     linkedin_images: 'default',  // 'large' (Highest) | 'small' (Data saver) | 'default'
+
+    // TikTok
+    tiktok_enabled: true,
+    tiktok_videoQuality: 'max',
+
+    // Bluesky
+    bluesky_enabled: true,
+    bluesky_videoQuality: 'max',
   });
 
   // Video quality values shared by every site:
@@ -73,6 +85,13 @@
       // data saver trims them (see stream-hook.js).
       imageData: true,
     },
+    threads: {
+      label: 'Threads',
+      hosts: ['threads.com', 'threads.net'],
+      streamHosts: [],
+      // Same Meta app data as Instagram: MPDs inside API responses.
+      manifestPaths: ['/api/', '/graphql'],
+    },
     linkedin: {
       label: 'LinkedIn',
       hosts: ['linkedin.com'],
@@ -80,6 +99,19 @@
       // The player (Video.js) gets each video's quality list as JSON, not
       // as a playlist download; the stream hook filters it as it's unpacked.
       vhsJson: true,
+    },
+    tiktok: {
+      label: 'TikTok',
+      hosts: ['tiktok.com'],
+      streamHosts: [],
+      // Each video lists its MP4s ("bitrateInfo") in the page data and API
+      // responses; the stream hook trims that list as it's unpacked.
+      bitrateJson: true,
+    },
+    bluesky: {
+      label: 'Bluesky',
+      hosts: ['bsky.app'],
+      streamHosts: ['video.bsky.app', 'video.cdn.bsky.app'],
     },
   });
 
@@ -105,6 +137,7 @@
       streamHosts: (SITES[siteId] && SITES[siteId].streamHosts) || [],
       manifestPaths: (SITES[siteId] && SITES[siteId].manifestPaths) || [],
       vhsJson: !!(SITES[siteId] && SITES[siteId].vhsJson),
+      bitrateJson: !!(SITES[siteId] && SITES[siteId].bitrateJson),
     };
   }
 
