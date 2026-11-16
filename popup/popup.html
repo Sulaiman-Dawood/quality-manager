@@ -1,0 +1,146 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>Quality Manager</title>
+  <link rel="stylesheet" href="popup.css">
+</head>
+<body>
+  <header>
+    <img class="logo" src="../icons/icon128.png" alt="" width="32" height="32">
+    <div class="title">
+      <h1>Quality Manager</h1>
+      <p>Video &amp; image quality, your way</p>
+    </div>
+    <label class="switch" title="Turn everything on or off">
+      <input type="checkbox" id="enabled" aria-label="Quality Manager on">
+      <span></span>
+    </label>
+  </header>
+
+  <main id="options">
+    <!-- Site picker: add an <option> and a page (page-<site>) to add a site -->
+    <div class="picker">
+      <label for="site-picker">Settings for</label>
+      <select id="site-picker">
+        <option value="x">X</option>
+        <option value="reddit">Reddit</option>
+        <option value="youtube">YouTube</option>
+        <option value="instagram">Instagram</option>
+        <option value="general">General (all sites)</option>
+      </select>
+    </div>
+
+    <!-- X -->
+    <section class="page site-page" id="page-x" data-site="x" aria-label="X settings" hidden>
+      <div class="row site-toggle">
+        <label for="x_enabled">Enabled on X</label>
+        <label class="switch"><input type="checkbox" id="x_enabled"><span></span></label>
+      </div>
+      <div class="site-options group">
+        <div class="row">
+          <label for="x_videoQuality">Video quality</label>
+          <select id="x_videoQuality" data-quality></select>
+        </div>
+        <div class="row">
+          <label for="x_feedImages" title="Highest: the original upload. Data saver: X's small size (up to 680px), also when a photo is opened full screen.">Images</label>
+          <select id="x_feedImages">
+            <option value="orig">Highest</option>
+            <option value="small">Data saver</option>
+            <option value="default">Site default</option>
+          </select>
+        </div>
+      </div>
+    </section>
+
+    <!-- Reddit -->
+    <section class="page site-page" id="page-reddit" data-site="reddit" aria-label="Reddit settings" hidden>
+      <div class="row site-toggle">
+        <label for="reddit_enabled">Enabled on Reddit</label>
+        <label class="switch"><input type="checkbox" id="reddit_enabled"><span></span></label>
+      </div>
+      <div class="site-options group">
+        <div class="row">
+          <label for="reddit_videoQuality">Video quality</label>
+          <select id="reddit_videoQuality" data-quality></select>
+        </div>
+        <div class="row">
+          <label for="reddit_images" title="Highest: the original upload instead of Reddit's resized previews. Data saver: the largest preview no wider than the image is shown. GIFs are left as they are.">Images</label>
+          <select id="reddit_images">
+            <option value="orig">Highest</option>
+            <option value="small">Data saver</option>
+            <option value="default">Site default</option>
+          </select>
+        </div>
+      </div>
+    </section>
+
+    <!-- YouTube -->
+    <section class="page site-page" id="page-youtube" data-site="youtube" aria-label="YouTube settings" hidden>
+      <div class="row site-toggle">
+        <label for="youtube_enabled">Enabled on YouTube</label>
+        <label class="switch"><input type="checkbox" id="youtube_enabled"><span></span></label>
+      </div>
+      <div class="site-options group">
+        <div class="row">
+          <label for="youtube_videoQuality" title="Set once per video. YouTube's gear menu still works until the next video.">Video quality</label>
+          <select id="youtube_videoQuality" data-quality></select>
+        </div>
+      </div>
+    </section>
+
+    <!-- Instagram -->
+    <section class="page site-page" id="page-instagram" data-site="instagram" aria-label="Instagram settings" hidden>
+      <div class="row site-toggle">
+        <label for="instagram_enabled">Enabled on Instagram</label>
+        <label class="switch"><input type="checkbox" id="instagram_enabled"><span></span></label>
+      </div>
+      <div class="site-options group">
+        <div class="row">
+          <label for="instagram_videoQuality" title="Instagram's web player has no quality setting and drops quality on its own.">Video quality</label>
+          <select id="instagram_videoQuality" data-quality></select>
+        </div>
+        <div class="row">
+          <label for="instagram_images" title="Data saver keeps Instagram from loading photos wider than 640px (it often loads 1080–3000px for a ~470px slot).">Images</label>
+          <select id="instagram_images">
+            <option value="small">Data saver</option>
+            <option value="default">Site default</option>
+          </select>
+        </div>
+      </div>
+    </section>
+
+    <!-- General -->
+    <section class="page" id="page-general" aria-label="General settings" hidden>
+      <div class="group">
+        <div class="row">
+          <span id="all-label" title="Sets video and images on every site to Highest or Data saver.">All sites</span>
+          <div class="seg" role="group" aria-labelledby="all-label">
+            <button type="button" data-all="max" aria-pressed="false">Highest</button>
+            <button type="button" data-all="min" aria-pressed="false">Data saver</button>
+          </div>
+        </div>
+        <div class="row">
+          <label for="bestAudio">Best audio quality</label>
+          <label class="switch"><input type="checkbox" id="bestAudio"><span></span></label>
+        </div>
+        <div class="row">
+          <label for="showBadge">Resolution badge on videos</label>
+          <label class="switch"><input type="checkbox" id="showBadge"><span></span></label>
+        </div>
+      </div>
+    </section>
+
+    <p class="note"><strong>Limits:</strong> Quality can't go higher than what was uploaded, or lower than the lowest version the site offers.</p>
+  </main>
+
+  <footer>
+    <span id="status">Changes apply after a reload.</span>
+    <button id="reload" type="button" class="primary">Reload tab</button>
+  </footer>
+
+  <script src="../src/shared/config.js"></script>
+  <script src="dropdown.js"></script>
+  <script src="popup.js"></script>
+</body>
+</html>
