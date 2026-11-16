@@ -1,8 +1,8 @@
 {
   "manifest_version": 3,
   "name": "Quality Manager",
-  "version": "1.0.0",
-  "description": "Control video and image quality on X, Reddit, YouTube and Instagram: force the best, or save data.",
+  "version": "1.1.0",
+  "description": "Control video and image quality on X, Reddit, YouTube, Instagram and LinkedIn: force the best, or save data.",
   "icons": {
     "16": "icons/icon16.png",
     "32": "icons/icon32.png",
@@ -40,7 +40,9 @@
     "https://*.youtube.com/*",
     "https://*.youtube-nocookie.com/*",
     "https://instagram.com/*",
-    "https://*.instagram.com/*"
+    "https://*.instagram.com/*",
+    "https://linkedin.com/*",
+    "https://*.linkedin.com/*"
   ],
   "content_scripts": [
     {
@@ -52,7 +54,9 @@
         "https://reddit.com/*",
         "https://*.reddit.com/*",
         "https://instagram.com/*",
-        "https://*.instagram.com/*"
+        "https://*.instagram.com/*",
+        "https://linkedin.com/*",
+        "https://*.linkedin.com/*"
       ],
       "js": [
         "src/shared/hls-rewrite.js",
@@ -100,7 +104,9 @@
         "https://*.youtube.com/*",
         "https://*.youtube-nocookie.com/*",
         "https://instagram.com/*",
-        "https://*.instagram.com/*"
+        "https://*.instagram.com/*",
+        "https://linkedin.com/*",
+        "https://*.linkedin.com/*"
       ],
       "js": [
         "src/shared/config.js",

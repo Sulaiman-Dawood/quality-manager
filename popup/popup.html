@@ -27,6 +27,7 @@
         <option value="reddit">Reddit</option>
         <option value="youtube">YouTube</option>
         <option value="instagram">Instagram</option>
+        <option value="linkedin">LinkedIn</option>
         <option value="general">General (all sites)</option>
       </select>
     </div>
@@ -103,6 +104,28 @@
         <div class="row">
           <label for="instagram_images" title="Data saver keeps Instagram from loading photos wider than 640px (it often loads 1080–3000px for a ~470px slot).">Images</label>
           <select id="instagram_images">
+            <option value="small">Data saver</option>
+            <option value="default">Site default</option>
+          </select>
+        </div>
+      </div>
+    </section>
+
+    <!-- LinkedIn -->
+    <section class="page site-page" id="page-linkedin" data-site="linkedin" aria-label="LinkedIn settings" hidden>
+      <div class="row site-toggle">
+        <label for="linkedin_enabled">Enabled on LinkedIn</label>
+        <label class="switch"><input type="checkbox" id="linkedin_enabled"><span></span></label>
+      </div>
+      <div class="site-options group">
+        <div class="row">
+          <label for="linkedin_videoQuality" title="Most LinkedIn videos top out at 720p.">Video quality</label>
+          <select id="linkedin_videoQuality" data-quality></select>
+        </div>
+        <div class="row">
+          <label for="linkedin_images" title="Highest: the largest size LinkedIn lists. Data saver: the largest size no wider than the image is shown. Images without a size list are left as they are.">Images</label>
+          <select id="linkedin_images">
+            <option value="large">Highest</option>
             <option value="small">Data saver</option>
             <option value="default">Site default</option>
           </select>

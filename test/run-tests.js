@@ -213,13 +213,14 @@ test('site detection', () => {
   assert.strictEqual(CONFIG.siteForHost('old.reddit.com'), 'reddit');
   assert.strictEqual(CONFIG.siteForHost('m.youtube.com'), 'youtube');
   assert.strictEqual(CONFIG.siteForHost('www.youtube-nocookie.com'), 'youtube');
+  assert.strictEqual(CONFIG.siteForHost('www.linkedin.com'), 'linkedin');
   assert.strictEqual(CONFIG.siteForHost('notreddit.com'), null);
   assert.strictEqual(CONFIG.siteForHost('example.com'), null);
 });
 
 test('pageSettings respects global and per-site switches', () => {
   const s = Object.assign({}, CONFIG.DEFAULTS, { reddit_videoQuality: '720' });
-  assert.deepStrictEqual(CONFIG.pageSettings(s, 'reddit'), { enabled: true, videoQuality: '720', bestAudio: true, images: 'orig', imageData: false, streamHosts: ['v.redd.it'], manifestPaths: [] });
+  assert.deepStrictEqual(CONFIG.pageSettings(s, 'reddit'), { enabled: true, videoQuality: '720', bestAudio: true, images: 'orig', imageData: false, streamHosts: ['v.redd.it'], manifestPaths: [], vhsJson: false });
   assert.strictEqual(CONFIG.pageSettings(Object.assign({}, s, { reddit_enabled: false }), 'reddit').enabled, false);
   assert.strictEqual(CONFIG.pageSettings(Object.assign({}, s, { enabled: false }), 'x').enabled, false);
 });
@@ -965,6 +966,53 @@ test('Instagram: registered as a site with its API paths', () => {
   assert.deepStrictEqual(CONFIG.pageSettings(CONFIG.DEFAULTS, 'x').manifestPaths, []);
 });
 
+section('LinkedIn');
+
+// LinkedIn's Video.js player is handed each video's quality list as JSON
+// ("data:application/vnd.videojs.vhs+json,{...}"), from a real feed video.
+function liList(variants) {
+  return JSON.stringify({
+    allowCache: true, discontinuityStarts: [], segments: [], endList: true,
+    mediaGroups: { AUDIO: {}, VIDEO: {}, 'CLOSED-CAPTIONS': {}, SUBTITLES: {} }, uri: '', duration: 28,
+    playlists: variants.map(([w, h, bw, codec], i) => ({
+      attributes: { AUDIO: 'audio', BANDWIDTH: bw, CODECS: codec, NAME: 'B4D' + i, RESOLUTION: { width: w, height: h } },
+      uri: '', resolvedUri: '', segments: [{ duration: 4, uri: `https://dms.licdn.com/playlist/vid/v2/D4D/hls-${h}p/B4D${i}/2/1` }],
+    })),
+    timelineStarts: [{ start: 0, timeline: 0 }],
+  });
+}
+const AV1 = 'av01.0.04M.10,mp4a.40.2';
+const AVC = 'avc1.42001e,mp4a.40.2';
+const LI_VIDEO = liList([[1280, 720, 1900000, AVC], [1280, 720, 1500000, AVC], [960, 540, 900000, AVC], [854, 480, 600000, AVC], [640, 360, 400000, AVC], [1280, 720, 1100000, AV1]]);
+const liPage = (q, extra) => plainPage('www.linkedin.com', Object.assign({}, CONFIG.pageSettings(CONFIG.DEFAULTS, 'linkedin'), { videoQuality: q }, extra));
+const liSizes = (page, text) => Array.from(pageJSON(page).parse(text).playlists, (p) => p.attributes.RESOLUTION.height + (p.attributes.CODECS.startsWith('av01') ? 'av1' : ''));
+
+test('LinkedIn: the player quality list keeps only the chosen size (every codec at it)', () => {
+  assert.deepStrictEqual(liSizes(liPage('min'), LI_VIDEO), ['360']);
+  assert.deepStrictEqual(liSizes(liPage('480'), LI_VIDEO), ['480']);
+  assert.deepStrictEqual(liSizes(liPage('max'), LI_VIDEO), ['720', '720', '720av1']);
+  // Portrait videos go by the short side.
+  const portrait = liList([[720, 1280, 1500000, AVC], [540, 960, 900000, AVC], [360, 640, 400000, AVC]]);
+  assert.deepStrictEqual(liSizes(liPage('720'), portrait).length, 1);
+  assert.strictEqual(pageJSON(liPage("720")).parse(portrait).playlists[0].attributes.RESOLUTION.width, 720);
+});
+
+test('LinkedIn: Site default, switched off, and other JSON are left alone', () => {
+  assert.strictEqual(liSizes(liPage('auto'), LI_VIDEO).length, 6);
+  assert.strictEqual(liSizes(liPage('min', { enabled: false }), LI_VIDEO).length, 6);
+  const page = liPage('min');
+  const other = JSON.stringify({ playlists: [1, 2], data: 'x'.repeat(300) });
+  assert.strictEqual(JSON.stringify(pageJSON(page).parse(other)), other);
+  // Reviver still works.
+  assert.strictEqual(pageJSON(page).parse('{"a":1}', (k, v) => (k === 'a' ? 2 : v)).a, 2);
+});
+
+test('LinkedIn: registered, and only LinkedIn wraps JSON.parse for it', () => {
+  assert.strictEqual(CONFIG.pageSettings(CONFIG.DEFAULTS, 'linkedin').vhsJson, true);
+  const x = plainPage('x.com', Object.assign({}, CONFIG.pageSettings(CONFIG.DEFAULTS, 'x'), { videoQuality: 'min' }));
+  assert.strictEqual(liSizes(x, LI_VIDEO).length, 6);
+});
+
 // A tiny fake DOM element: enough for the bridge's badge layer.
 function fakeEl(tag) {
   const el = {
@@ -1132,6 +1180,24 @@ test('images: Instagram data saver (not laid out yet -> modest size); default un
   const def = fakeImg(IG_SRCSET, 600);
   loadBridge('www.instagram.com', {}, { imgs: [def] });
   assert.strictEqual(def.srcset, IG_SRCSET);
+});
+
+const LI = (w) => `https://media.licdn.com/dms/image/v2/D4D22AQabc/feedshare-shrink_${w}/B4DZabc/0/1700000000000?e=1&v=beta&t=sig${w}`;
+const LI_SRCSET = [20, 160, 480, 800, 1280, 2048].map((w) => `${LI(w)} ${w}w`).join(', ');
+
+test('images: LinkedIn data saver takes the smallest size that fills the slot; Highest the largest', () => {
+  const img = fakeImg(LI_SRCSET, 470);
+  loadBridge('www.linkedin.com', { linkedin_images: 'small' }, { imgs: [img] });
+  assert.strictEqual(img.srcset, `${LI(480)} 480w`);
+  const wide = fakeImg(LI_SRCSET, 3000);
+  loadBridge('www.linkedin.com', { linkedin_images: 'small' }, { imgs: [wide] });
+  assert.strictEqual(wide.srcset, `${LI(2048)} 2048w`);
+  const big = fakeImg(LI_SRCSET, 470);
+  loadBridge('www.linkedin.com', { linkedin_images: 'large' }, { imgs: [big] });
+  assert.strictEqual(big.srcset, `${LI(2048)} 2048w`);
+  const def = fakeImg(LI_SRCSET, 470);
+  loadBridge('www.linkedin.com', {}, { imgs: [def] });
+  assert.strictEqual(def.srcset, LI_SRCSET);
 });
 
 test('images: other hosts, single sizes and switched-off sites are left alone', () => {

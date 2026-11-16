@@ -15,7 +15,7 @@
     // Global
     enabled: true,
     bestAudio: true,   // highest-bitrate audio track (HLS/DASH sites)
-    showBadge: true,   // resolution badge on videos (X, Reddit, Instagram)
+    showBadge: true,   // resolution badge on videos
 
     // X
     x_enabled: true,
@@ -35,6 +35,11 @@
     instagram_enabled: true,
     instagram_videoQuality: 'max',
     instagram_images: 'default', // 'small' | 'default'
+
+    // LinkedIn
+    linkedin_enabled: true,
+    linkedin_videoQuality: 'max',
+    linkedin_images: 'default',  // 'large' (Highest) | 'small' (Data saver) | 'default'
   });
 
   // Video quality values shared by every site:
@@ -68,6 +73,14 @@
       // data saver trims them (see stream-hook.js).
       imageData: true,
     },
+    linkedin: {
+      label: 'LinkedIn',
+      hosts: ['linkedin.com'],
+      streamHosts: [],
+      // The player (Video.js) gets each video's quality list as JSON, not
+      // as a playlist download; the stream hook filters it as it's unpacked.
+      vhsJson: true,
+    },
   });
 
   function hostMatches(hostname, domain) {
@@ -91,6 +104,7 @@
       imageData: !!(SITES[siteId] && SITES[siteId].imageData),
       streamHosts: (SITES[siteId] && SITES[siteId].streamHosts) || [],
       manifestPaths: (SITES[siteId] && SITES[siteId].manifestPaths) || [],
+      vhsJson: !!(SITES[siteId] && SITES[siteId].vhsJson),
     };
   }
 

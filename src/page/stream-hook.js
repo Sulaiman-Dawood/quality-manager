@@ -1,8 +1,9 @@
 // Runs in the page's own JS world (MAIN) at document_start, before the
-// site's player code, on sites that stream HLS/DASH (X, Reddit, Instagram).
-// Intercepts master playlists / MPDs the player fetches -- or, on Instagram,
-// the API responses that carry MPDs inside their JSON -- and rewrites them
-// to the quality the user chose.
+// site's player code, on sites that stream HLS/DASH (X, Reddit, Instagram,
+// LinkedIn). Intercepts master playlists / MPDs the player fetches -- or, on
+// Instagram, the API responses that carry MPDs inside their JSON; on
+// LinkedIn, the quality list handed to the player as JSON -- and rewrites
+// them to the quality the user chose.
 (function () {
   'use strict';
   if (window.__QM_STREAM_HOOKED__) return;
@@ -33,7 +34,7 @@
   window.addEventListener('qm-settings', (e) => {
     current();
     loadSettings(e.detail);
-    if (settings && settings.imageData) hookParse();
+    if (settings && (settings.imageData || settings.vhsJson)) hookParse();
   });
 
   function active() {
@@ -102,12 +103,42 @@
     return { text: out + text.slice(from), changed: true };
   }
 
+  // ---- LinkedIn: the player's quality list ----------------------------------
+  // LinkedIn's Video.js player gets each video as a ready-made list
+  // ("data:application/vnd.videojs.vhs+json,{...}") rather than downloading
+  // a playlist, and unpacks it with JSON.parse. Keep only the renditions at
+  // the chosen size; all codecs at that size stay (e.g. AV1 and H.264), so
+  // the player can still fall back to one the browser plays.
+  function isVhsList(v) {
+    return v && typeof v === 'object' && !Array.isArray(v) && Array.isArray(v.playlists) && v.playlists.length > 1 &&
+      v.mediaGroups && v.playlists.every((p) => p && p.attributes && p.attributes.RESOLUTION && p.attributes.RESOLUTION.height > 0);
+  }
+
+  function filterVhsList(list, quality) {
+    const short = (p) => HLS.shortSide({ width: p.attributes.RESOLUTION.width, height: p.attributes.RESOLUTION.height });
+    const variants = list.playlists.map((p) => ({
+      width: p.attributes.RESOLUTION.width, height: p.attributes.RESOLUTION.height, bandwidth: +p.attributes.BANDWIDTH || 0,
+    }));
+    const chosen = HLS.pickVariant(variants, quality);
+    if (!chosen) return false;
+    const keep = list.playlists.filter((p) => short(p) === HLS.shortSide(chosen));
+    if (!keep.length || keep.length === list.playlists.length) return false;
+    list.playlists = keep;
+    return true;
+  }
+
+  function vhsQuality() {
+    const s = current();
+    return s && s.enabled && s.vhsJson && s.videoQuality !== 'auto' ? s.videoQuality : null;
+  }
+
   // The first posts come bundled inside the page rather than from the API,
   // so they never pass through the hooks below. All of the app's data, from
   // either source, is unpacked with JSON.parse, so trim photo sizes there.
   // Strings without a "candidates" list pass straight through.
-  // Installed only on sites whose settings say they carry photo data
-  // (Instagram), so other sites' JSON.parse calls never run through here.
+  // Installed only on sites whose settings say they need it (Instagram
+  // photos, LinkedIn's player), so other sites' JSON.parse calls never run
+  // through here.
   function hookParse() {
     if (parseHooked) return;
     parseHooked = true;
@@ -119,10 +150,17 @@
           if (r.changed) text = r.text;
         } catch (_) { /* parse the original */ }
       }
-      return origParse.call(this, text, reviver);
+      const result = origParse.call(this, text, reviver);
+      if (typeof text === 'string' && text.startsWith('{"allowCache"')) {
+        try {
+          const q = vhsQuality();
+          if (q && isVhsList(result)) filterVhsList(result, q);
+        } catch (_) { /* leave the list as it is */ }
+      }
+      return result;
     };
   }
-  if (current() && settings.imageData) hookParse();
+  if (current() && (settings.imageData || settings.vhsJson)) hookParse();
 
   function hostMatches(hostname, domain) {
     return hostname === domain || hostname.endsWith('.' + domain);

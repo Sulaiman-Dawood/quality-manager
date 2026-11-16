@@ -20,6 +20,10 @@
   const IMAGE_SITES = {
     reddit: { key: 'reddit_images', hosts: ['preview.redd.it'] },
     instagram: { key: 'instagram_images', hosts: ['cdninstagram.com', 'fbcdn.net'] },
+    // LinkedIn's lists are sparse (160, 480, 800, 1200...), so "no wider
+    // than shown" could drop a 470px photo to 160px. Data saver takes the
+    // smallest size that still fills the slot instead.
+    linkedin: { key: 'linkedin_images', hosts: ['media.licdn.com'], fill: true },
   };
 
   try { localStorage.removeItem('__xq_settings'); } catch (_) {} // v1 leftover
@@ -181,12 +185,13 @@
   }
   setInterval(() => { if (!document.hidden && (badgeOn() || badges.size)) refreshAllBadges(); }, 700);
 
-  // ---- Image size picker (Reddit, Instagram) ------------------------------
+  // ---- Image size picker (Reddit, Instagram, LinkedIn) ------------------------------
   // Each image comes with a srcset: the site's list of sizes, every one a
   // signed URL (so sizes can't be made up). The browser normally picks by
   // display size and screen density; here the extension picks instead:
   //   'small'  data saver: the largest size no wider than the image is
-  //            shown (the smallest listed if all are wider)
+  //            shown (the smallest listed if all are wider); on sites
+  //            marked `fill`, the smallest size at least that wide
   //   'large'  largest size listed
   // by narrowing the srcset to that one entry. 'default' leaves it alone;
   // Reddit's 'orig' is handled by redirect rules in the background instead.
@@ -221,6 +226,7 @@
   function pick(cands, mode, el) {
     if (mode === 'large') return cands[cands.length - 1];
     const shown = displayWidth(el) || 480; // not laid out yet: a modest default
+    if (IMAGE_SITES[siteId].fill) return cands.find((c) => c.w >= shown) || cands[cands.length - 1];
     let best = cands[0];
     for (const c of cands) if (c.w <= shown) best = c;
     return best;

@@ -116,6 +116,7 @@
         x_feedImages: highest ? 'orig' : 'small',
         reddit_images: highest ? 'orig' : 'small',
         instagram_images: highest ? 'default' : 'small',
+        linkedin_images: highest ? 'large' : 'small',
       };
       for (const site of SITE_IDS) changes[site + '_videoQuality'] = btn.dataset.all;
       save(changes, highest ? 'All sites set to Highest. Reload to apply.' : 'All sites set to Data saver. Reload to apply.');
