@@ -1434,6 +1434,11 @@ test('X original: a photo that still fails is retried once at 4096px, not redire
 // =========================================================================
 section('Manifest');
 
+test('manifest description fits the stores (Edge: 132 characters)', () => {
+  const m = JSON.parse(fs.readFileSync(path.join(SRC, '..', 'manifest.json'), 'utf8'));
+  assert.ok(m.description.length <= 132, `description is ${m.description.length} characters`);
+});
+
 test('every script the manifest references exists', () => {
   const manifest = JSON.parse(fs.readFileSync(path.join(__dirname, '../manifest.json'), 'utf8'));
   const files = [manifest.background.service_worker, manifest.action.default_popup,

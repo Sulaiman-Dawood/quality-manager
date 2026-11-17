@@ -4,7 +4,7 @@ Copy each part into Partner Center (Extensions → your extension → Store list
 
 ## Package
 
-Upload `dist/quality-manager-1.2.1.zip` (from the GitHub release).
+Upload `dist/quality-manager-1.2.2.zip` (from the GitHub release).
 
 ## Name
 
@@ -12,7 +12,7 @@ Quality Manager
 
 ## Short description
 
-Control video and image quality on X, Reddit, YouTube, Instagram, Threads, LinkedIn, TikTok and Bluesky: force the best, or save data.
+Choose video and image quality on X, Reddit, YouTube, Instagram, TikTok and more. Force the best, or save data.
 
 ## Description
 

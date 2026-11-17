@@ -21,7 +21,7 @@ A Chrome extension that controls video and image quality on **X**, **Reddit**, *
 
 ## Install
 
-1. Download `quality-manager-1.2.1.zip` from the latest release and unzip it.
+1. Download `quality-manager-1.2.2.zip` from the latest release and unzip it.
 2. Open `chrome://extensions` and turn on **Developer mode**.
 3. Click **Load unpacked** and select the unzipped folder.
 4. Reload any open X, Reddit, YouTube, Instagram, Threads, LinkedIn, TikTok or Bluesky tabs.

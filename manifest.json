@@ -1,8 +1,8 @@
 {
   "manifest_version": 3,
   "name": "Quality Manager",
-  "version": "1.2.1",
-  "description": "Control video and image quality on X, Reddit, YouTube, Instagram, Threads, LinkedIn, TikTok and Bluesky: force the best, or save data.",
+  "version": "1.2.2",
+  "description": "Choose video and image quality on X, Reddit, YouTube, Instagram, TikTok and more. Force the best, or save data.",
   "icons": {
     "16": "icons/icon16.png",
     "32": "icons/icon32.png",
