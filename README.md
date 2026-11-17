@@ -21,17 +21,17 @@ A Chrome and Firefox extension that controls video and image quality on **X**, *
 
 ## Install
 
-**Chrome, Edge, Brave and other Chromium browsers**
+**Firefox:** [Quality Manager on Firefox Add-ons](https://addons.mozilla.org/firefox/addon/quality-manager/). Updates install automatically.
 
-1. Download `quality-manager-1.3.0.zip` from the latest release and unzip it.
+**Microsoft Edge:** coming to Edge Add-ons (in review). Until then, use the steps below.
+
+**Chrome, Edge, Brave and other Chromium browsers (manual install)**
+
+1. Download `quality-manager-<version>.zip` from the [latest release](https://github.com/Sulaiman-Dawood/quality-manager/releases/latest) and unzip it.
 2. Open `chrome://extensions` and turn on **Developer mode**.
 3. Click **Load unpacked** and select the unzipped folder.
 
-**Firefox** (128 or newer)
-
-1. Download `quality-manager-1.3.0-firefox.zip` from the latest release.
-2. Open `about:debugging#/runtime/this-firefox` and click **Load Temporary Add-on…**.
-3. Select the zip. Firefox removes temporary add-ons when it closes; a permanent install needs the version signed by Mozilla.
+A manual install doesn't update itself: download the new zip when a release comes out.
 
 Then reload any open X, Reddit, YouTube, Instagram, Threads, LinkedIn, TikTok or Bluesky tabs.
 
@@ -44,3 +44,13 @@ Pick a site from the popup's dropdown to see its settings. Changes apply after a
 - LinkedIn photos without a size list (such as document pages) stay as LinkedIn serves them.
 - X's Data saver also applies to photos opened full screen.
 - Sites change their code. When one does, the extension stops having an effect there instead of breaking playback.
+
+## Developing
+
+- `node test/run-tests.js` runs the unit tests.
+- `node tools/build.mjs` builds the Chrome/Edge and Firefox zips into `dist/`.
+- `node tools/check.mjs` loads the extension into real Edge and Firefox and checks it on public sites (YouTube, Bluesky, TikTok). Run it before a release; sites change their code without warning.
+
+## License
+
+[MIT](LICENSE)
