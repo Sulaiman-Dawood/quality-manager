@@ -4,7 +4,7 @@ Copy each part into Partner Center (Extensions → your extension → Store list
 
 ## Package
 
-Upload `dist/quality-manager-1.2.2.zip` (from the GitHub release).
+Upload `dist/quality-manager-<version>.zip` (built by `node tools/build.mjs`, also on the GitHub release).
 
 ## Name
 

@@ -1147,12 +1147,32 @@ const ttPlay = (data) => data.__DEFAULT_SCOPE__['webapp.updated-items'][0].video
 test('TikTok: page data keeps only the chosen size (every codec at it)', () => {
   const max = pageJSON(ttPage('max')).parse(ttFeed());
   assert.deepStrictEqual(ttGears(max), ['adapt_lowest_1080_1']);
-  assert.strictEqual(ttPlay(max), TT_URL('lowest_540_0'), 'no H.264 at 1080p: fallback address left alone');
+  // No H.264 at 1080p: the fallback (which Firefox's player uses) goes to the
+  // H.265 file, since this browser doesn't say it can't play it.
+  assert.strictEqual(ttPlay(max), TT_URL('adapt_lowest_1080_1'));
   const min = pageJSON(ttPage('min')).parse(ttFeed());
   assert.deepStrictEqual(ttGears(min), ['adapt_540_1', 'lowest_540_0']);
   assert.strictEqual(ttPlay(min), TT_URL('lowest_540_0'));
   assert.deepStrictEqual(ttGears(pageJSON(ttPage('720')).parse(ttFeed())), ['adapt_lower_720_1']);
   assert.deepStrictEqual(ttGears(pageJSON(ttPage('1080')).parse(ttFeed())), ['adapt_lowest_1080_1']);
+});
+
+test('TikTok: browsers that cannot play H.265 only get files they can play', () => {
+  const MediaSource = { isTypeSupported: (t) => !/hvc1|hev1/.test(t) };
+  const settings = Object.assign({}, CONFIG.pageSettings(CONFIG.DEFAULTS, 'tiktok'), { videoQuality: 'max' });
+  const page = loadPage('www.tiktok.com', STREAM_FILES, { XMLHttpRequest: class {}, fetch: async () => {}, MediaSource }, settings);
+  const out = pageJSON(page).parse(ttFeed());
+  // 1080p and 720p are H.265 only here, so Highest is the best H.264 file.
+  assert.deepStrictEqual(ttGears(out), ['lowest_540_0']);
+  assert.strictEqual(ttPlay(out), TT_URL('lowest_540_0'));
+});
+
+test('LinkedIn: versions in formats the browser cannot play are skipped', () => {
+  const MediaSource = { isTypeSupported: (t) => !/av01/.test(t) };
+  const settings = Object.assign({}, CONFIG.pageSettings(CONFIG.DEFAULTS, 'linkedin'), { videoQuality: 'max' });
+  const page = loadPage('www.linkedin.com', STREAM_FILES, { XMLHttpRequest: class {}, fetch: async () => {}, MediaSource }, settings);
+  const list = liList([[1920, 1080, 2500000, AV1], [1280, 720, 1900000, AVC], [640, 360, 400000, AVC]]);
+  assert.deepStrictEqual(liSizes(page, list), ['720']);
 });
 
 test('TikTok: the fallback address follows the size when an H.264 file exists there', () => {
@@ -1437,6 +1457,21 @@ section('Manifest');
 test('manifest description fits the stores (Edge: 132 characters)', () => {
   const m = JSON.parse(fs.readFileSync(path.join(SRC, '..', 'manifest.json'), 'utf8'));
   assert.ok(m.description.length <= 132, `description is ${m.description.length} characters`);
+});
+
+test('Firefox manifest: background scripts match what the service worker imports; add-on ID set', () => {
+  const { firefoxManifest, BACKGROUND_SCRIPTS } = require('../tools/firefox-manifest.js');
+  const chromeManifest = JSON.parse(fs.readFileSync(path.join(SRC, '..', 'manifest.json'), 'utf8'));
+  const ff = firefoxManifest(chromeManifest);
+  const bgSource = fs.readFileSync(path.join(SRC, 'background', 'background.js'), 'utf8');
+  const imported = bgSource.match(/importScripts\(([^)]*)\)/)[1].match(/'([^']+)'/g).map((q) => 'src/background/' + q.slice(1, -1)).map((p) => path.posix.normalize(p));
+  assert.deepStrictEqual(BACKGROUND_SCRIPTS.slice(0, -1), imported);
+  assert.strictEqual(BACKGROUND_SCRIPTS[BACKGROUND_SCRIPTS.length - 1], 'src/background/background.js');
+  for (const f of BACKGROUND_SCRIPTS) assert.ok(fs.existsSync(path.join(SRC, '..', f)), f);
+  assert.ok(!ff.background.service_worker && ff.browser_specific_settings.gecko.id);
+  assert.deepStrictEqual(ff.browser_specific_settings.gecko.data_collection_permissions, { required: ['none'] });
+  assert.ok(!chromeManifest.browser_specific_settings, 'the Chrome manifest stays Chrome-only');
+  assert.strictEqual(ff.version, chromeManifest.version);
 });
 
 test('every script the manifest references exists', () => {

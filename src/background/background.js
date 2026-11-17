@@ -1,6 +1,10 @@
-// Service worker: turns settings into declarativeNetRequest redirect rules
-// (one module per site in ./sites).
-importScripts('../shared/config.js', 'sites/x.js', 'sites/reddit.js', 'sites/bluesky.js');
+// Background script: turns settings into declarativeNetRequest redirect
+// rules (one module per site in ./sites). Chrome runs it as a service worker
+// and it loads its helpers here; Firefox runs it as a background page whose
+// manifest lists the helpers before it (see tools/firefox-manifest.js).
+if (typeof importScripts === 'function') {
+  importScripts('../shared/config.js', 'sites/x.js', 'sites/reddit.js', 'sites/bluesky.js');
+}
 
 const CONFIG = self.QM_CONFIG;
 const DEFAULTS = CONFIG.DEFAULTS;
@@ -23,7 +27,7 @@ async function keepSupportedRules(rules) {
   const kept = [];
   for (const rule of rules) {
     const regex = rule.condition.regexFilter;
-    if (regex) {
+    if (regex && chrome.declarativeNetRequest.isRegexSupported) {
       const { isSupported, reason } = await chrome.declarativeNetRequest.isRegexSupported({
         regex,
         isCaseSensitive: !!rule.condition.isUrlFilterCaseSensitive,

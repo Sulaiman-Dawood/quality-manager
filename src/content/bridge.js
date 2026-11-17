@@ -101,10 +101,12 @@
     return b;
   }
 
-  // Shadow roots, open or closed (chrome.dom reaches closed ones).
+  // Shadow roots, open or closed (Chrome: chrome.dom; Firefox: the element's
+  // own openOrClosedShadowRoot(), both reach closed ones).
   function shadowOf(el) {
     try {
-      if (chrome.dom && chrome.dom.openOrClosedShadowRoot) return chrome.dom.openOrClosedShadowRoot(el);
+      if (typeof chrome !== 'undefined' && chrome.dom && chrome.dom.openOrClosedShadowRoot) return chrome.dom.openOrClosedShadowRoot(el);
+      if (typeof el.openOrClosedShadowRoot === 'function') return el.openOrClosedShadowRoot();
     } catch (_) {}
     return el.shadowRoot || null;
   }

@@ -1,6 +1,6 @@
 # Quality Manager
 
-A Chrome extension that controls video and image quality on **X**, **Reddit**, **YouTube**, **Instagram**, **Threads**, **LinkedIn**, **TikTok** and **Bluesky**: force the best, cap it, or save data.
+A Chrome and Firefox extension that controls video and image quality on **X**, **Reddit**, **YouTube**, **Instagram**, **Threads**, **LinkedIn**, **TikTok** and **Bluesky**: force the best, cap it, or save data.
 
 ## Features
 
@@ -21,10 +21,19 @@ A Chrome extension that controls video and image quality on **X**, **Reddit**, *
 
 ## Install
 
-1. Download `quality-manager-1.2.2.zip` from the latest release and unzip it.
+**Chrome, Edge, Brave and other Chromium browsers**
+
+1. Download `quality-manager-1.3.0.zip` from the latest release and unzip it.
 2. Open `chrome://extensions` and turn on **Developer mode**.
 3. Click **Load unpacked** and select the unzipped folder.
-4. Reload any open X, Reddit, YouTube, Instagram, Threads, LinkedIn, TikTok or Bluesky tabs.
+
+**Firefox** (128 or newer)
+
+1. Download `quality-manager-1.3.0-firefox.zip` from the latest release.
+2. Open `about:debugging#/runtime/this-firefox` and click **Load Temporary Add-on…**.
+3. Select the zip. Firefox removes temporary add-ons when it closes; a permanent install needs the version signed by Mozilla.
+
+Then reload any open X, Reddit, YouTube, Instagram, Threads, LinkedIn, TikTok or Bluesky tabs.
 
 Pick a site from the popup's dropdown to see its settings. Changes apply after a reload.
 

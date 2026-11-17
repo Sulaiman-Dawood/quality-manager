@@ -136,6 +136,33 @@
     return { quality: s.videoQuality, bestAudio: s.bestAudio };
   }
 
+  // ---- Formats the browser can play -----------------------------------------
+  // Sites list some sizes in formats not every browser plays (TikTok's 1080p
+  // is often H.265 only, which Firefox and some PCs can't decode; LinkedIn
+  // has AV1). Choose only among versions this browser can play, so the
+  // player is never left with nothing it can use.
+  const playCache = new Map();
+  function canPlay(codec) {
+    if (!codec) return true;
+    if (playCache.has(codec)) return playCache.get(codec);
+    let ok = true;
+    try {
+      const MS = window.MediaSource || window.ManagedMediaSource;
+      if (MS && typeof MS.isTypeSupported === 'function') ok = MS.isTypeSupported(`video/mp4; codecs="${codec}"`);
+    } catch (_) { ok = true; }
+    playCache.set(codec, ok);
+    return ok;
+  }
+  // The video codec of a CODECS attribute like "avc1.42001e,mp4a.40.2".
+  function videoCodec(codecs) {
+    return String(codecs || '').split(',').map((c) => c.trim()).find((c) => c && !/^mp4a|^opus|^ac-3|^ec-3|^flac/i.test(c)) || '';
+  }
+  // Keeps the playable entries; all of them if the browser can't tell.
+  function playableOnly(list, codecOf) {
+    const ok = list.filter((x) => canPlay(codecOf(x)));
+    return ok.length ? ok : list;
+  }
+
   // ---- LinkedIn: the player's quality list ----------------------------------
   // LinkedIn's Video.js player gets each video as a ready-made list
   // ("data:application/vnd.videojs.vhs+json,{...}") rather than downloading
@@ -149,12 +176,13 @@
 
   function filterVhsList(list, quality) {
     const short = (p) => HLS.shortSide({ width: p.attributes.RESOLUTION.width, height: p.attributes.RESOLUTION.height });
-    const variants = list.playlists.map((p) => ({
+    const usable = playableOnly(list.playlists, (p) => videoCodec(p.attributes.CODECS));
+    const variants = usable.map((p) => ({
       width: p.attributes.RESOLUTION.width, height: p.attributes.RESOLUTION.height, bandwidth: +p.attributes.BANDWIDTH || 0,
     }));
     const chosen = HLS.pickVariant(variants, quality);
     if (!chosen) return false;
-    const keep = list.playlists.filter((p) => short(p) === HLS.shortSide(chosen));
+    const keep = usable.filter((p) => short(p) === HLS.shortSide(chosen));
     if (!keep.length || keep.length === list.playlists.length) return false;
     list.playlists = keep;
     return true;
@@ -175,21 +203,34 @@
       Array.isArray(b.PlayAddr.UrlList) && b.PlayAddr.UrlList.length > 0;
   }
 
+  // TikTok names codecs ("h264", "h265_hvc1", "bytevc1"); a representative
+  // codec string for each, to ask the browser about.
+  function tiktokCodec(b) {
+    const t = String(b.CodecType || '').toLowerCase();
+    if (/265|hvc|hev|bytevc1/.test(t)) return 'hvc1.1.6.L120.90';
+    if (/264|avc/.test(t)) return 'avc1.64001f';
+    if (/av1|av01/.test(t)) return 'av01.0.08M.08';
+    return '';
+  }
+
   function filterBitrateInfo(video, quality) {
     const list = video.bitrateInfo;
     if (!Array.isArray(list) || list.length < 2 || !list.every(isBitrateEntry)) return false;
-    const variants = list.map((b) => ({ width: b.PlayAddr.Width, height: b.PlayAddr.Height, bandwidth: +b.Bitrate || 0 }));
+    const usable = playableOnly(list, tiktokCodec);
+    const variants = usable.map((b) => ({ width: b.PlayAddr.Width, height: b.PlayAddr.Height, bandwidth: +b.Bitrate || 0 }));
     const chosen = HLS.pickVariant(variants, quality);
     if (!chosen) return false;
     const size = HLS.shortSide(chosen);
-    const keep = list.filter((b) => HLS.shortSide({ width: b.PlayAddr.Width, height: b.PlayAddr.Height }) === size);
+    const keep = usable.filter((b) => HLS.shortSide({ width: b.PlayAddr.Width, height: b.PlayAddr.Height }) === size);
     if (!keep.length || keep.length === list.length) return false;
     video.bitrateInfo = keep;
-    // The single fallback address, used when the list isn't: point it at a
-    // kept H.264 file (plays everywhere) if it isn't one of them already.
+    // The single fallback address, which the player uses instead of the
+    // list in some browsers (Firefox): point it at a kept file if it isn't
+    // one already -- H.264 if there is one (plays everywhere), otherwise one
+    // this browser says it can play.
     if (typeof video.playAddr === 'string' && !keep.some((b) => b.PlayAddr.UrlList.includes(video.playAddr))) {
-      const h264 = keep.find((b) => /264/.test(String(b.CodecType)));
-      if (h264) video.playAddr = h264.PlayAddr.UrlList[0];
+      const pick = keep.find((b) => /264/.test(String(b.CodecType))) || keep.find((b) => canPlay(tiktokCodec(b)) && tiktokCodec(b));
+      if (pick) video.playAddr = pick.PlayAddr.UrlList[0];
     }
     return true;
   }
