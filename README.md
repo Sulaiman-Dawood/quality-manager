@@ -25,9 +25,9 @@ A Chrome and Firefox extension that controls video and image quality on **X**, *
 
 **Firefox:** [Quality Manager on Firefox Add-ons](https://addons.mozilla.org/firefox/addon/quality-manager/). Updates install automatically.
 
-**Microsoft Edge:** coming to Edge Add-ons (in review). Until then, use the steps below.
+**Microsoft Edge:** [Quality Manager on Edge Add-ons](https://microsoftedge.microsoft.com/addons/detail/quality-manager/fphggkohkinjkanigapnbinagbebkkmm). Updates install automatically.
 
-**Chrome, Edge, Brave and other Chromium browsers (manual install)**
+**Chrome, Brave and other Chromium browsers (manual install)**
 
 1. Download `quality-manager-<version>.zip` from the [latest release](https://github.com/Sulaiman-Dawood/quality-manager/releases/latest) and unzip it.
 2. Open `chrome://extensions` and turn on **Developer mode**.

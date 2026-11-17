@@ -67,7 +67,7 @@ Edge allows up to 7.
 
 https://github.com/Sulaiman-Dawood/quality-manager/blob/main/PRIVACY.md
 
-(This page goes live once `PRIVACY.md` is pushed to GitHub.)
+
 
 ## Website / support URL
 
