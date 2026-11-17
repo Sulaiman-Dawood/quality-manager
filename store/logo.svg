@@ -1,0 +1,17 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 128">
+  <!-- Quality Manager logo: safety-yellow hard hat on a dark rounded tile. -->
+  <rect width="128" height="128" rx="26" fill="#14171a"/>
+  <g fill="#ffc107">
+    <!-- dome -->
+    <path d="M28 76 A36 36 0 0 1 100 76 Z"/>
+    <!-- raised centre ridge -->
+    <rect x="56" y="34" width="16" height="42" rx="5"/>
+    <!-- brim -->
+    <rect x="18" y="78" width="92" height="12" rx="6"/>
+  </g>
+  <!-- cuts either side of the ridge -->
+  <g fill="#14171a">
+    <rect x="52" y="36" width="4" height="40"/>
+    <rect x="72" y="36" width="4" height="40"/>
+  </g>
+</svg>
