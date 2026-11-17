@@ -1,5 +1,7 @@
 # Quality Manager
 
+[![CI](https://github.com/Sulaiman-Dawood/quality-manager/actions/workflows/ci.yml/badge.svg)](https://github.com/Sulaiman-Dawood/quality-manager/actions/workflows/ci.yml)
+
 A Chrome and Firefox extension that controls video and image quality on **X**, **Reddit**, **YouTube**, **Instagram**, **Threads**, **LinkedIn**, **TikTok** and **Bluesky**: force the best, cap it, or save data.
 
 ## Features
@@ -49,6 +51,7 @@ Pick a site from the popup's dropdown to see its settings. Changes apply after a
 
 - `node test/run-tests.js` runs the unit tests.
 - `node tools/build.mjs` builds the Chrome/Edge and Firefox zips into `dist/`.
+- GitHub Actions runs the tests and builds both zips on every push. Publishing a GitHub release (tag `v` + the manifest version, e.g. `v1.3.0`) attaches the zips to it automatically.
 - `node tools/check.mjs` loads the extension into real Edge and Firefox and checks it on public sites (YouTube, Bluesky, TikTok). Run it before a release; sites change their code without warning.
 
 ## License
