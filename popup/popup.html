@@ -125,6 +125,14 @@
           <label for="threads_videoQuality" title="Threads' web player has no quality setting and picks the quality on its own.">Video quality</label>
           <select id="threads_videoQuality" data-quality></select>
         </div>
+        <div class="row">
+          <label for="threads_images" title="Highest: the largest size Threads lists. Data saver: photos no wider than 640px, or no wider than shown where Threads offers a choice.">Images</label>
+          <select id="threads_images">
+            <option value="large">Highest</option>
+            <option value="small">Data saver</option>
+            <option value="default">Site default</option>
+          </select>
+        </div>
       </div>
     </section>
 
@@ -174,6 +182,13 @@
         <div class="row">
           <label for="bluesky_videoQuality" title="Bluesky's player has no quality setting and starts videos at its lowest quality.">Video quality</label>
           <select id="bluesky_videoQuality" data-quality></select>
+        </div>
+        <div class="row">
+          <label for="bluesky_images" title="Highest: full-size photos instead of Bluesky's 1000px previews. Bluesky has no smaller size, so there is no data saver.">Images</label>
+          <select id="bluesky_images">
+            <option value="orig">Highest</option>
+            <option value="default">Site default</option>
+          </select>
         </div>
       </div>
     </section>

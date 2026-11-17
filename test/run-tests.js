@@ -407,6 +407,18 @@ test('Reddit previews -> i.redd.it originals (plain and slugged names)', () => {
     'https://i.redd.it/k3j2h1.jpeg');
 });
 
+test('Bluesky Highest: feed previews -> full size; off by default', () => {
+  const thumb = 'https://cdn.bsky.app/img/feed_thumbnail/plain/did:plc:z72i7hdynmk6r22z27h6tvur/bafkreiabc@jpeg';
+  assert.strictEqual(applyDnr(bg.__QM_BUILD_RULES__(withSettings({ bluesky_images: 'orig' })), thumb),
+    'https://cdn.bsky.app/img/feed_fullsize/plain/did:plc:z72i7hdynmk6r22z27h6tvur/bafkreiabc@jpeg');
+  assert.strictEqual(applyDnr(bg.__QM_BUILD_RULES__(defaults), thumb), thumb);
+  // Avatars and banners are left alone.
+  const avatar = 'https://cdn.bsky.app/img/avatar_thumbnail/plain/did:plc:abc/bafkreiabc@jpeg';
+  assert.strictEqual(applyDnr(bg.__QM_BUILD_RULES__(withSettings({ bluesky_images: 'orig' })), avatar), avatar);
+  assert.strictEqual(bg.__QM_BUILD_RULES__(withSettings({ bluesky_images: 'orig', bluesky_enabled: false })).length,
+    bg.__QM_BUILD_RULES__(defaults).length);
+});
+
 test('Reddit GIFs, external previews and originals are left alone', () => {
   const rules = bg.__QM_BUILD_RULES__(defaults);
   for (const u of [
@@ -450,9 +462,9 @@ test('X image-size rules use urlFilter, not regex', () => {
 // RE2 only skips compiling a literal prefix that directly follows `^`
 // (outside any group). Keep the variable part of each regex tiny.
 test('regex rules: literal host prefix outside groups, short variable part', () => {
-  for (const s of [defaults]) {
+  for (const s of [defaults, withSettings({ bluesky_images: 'orig' })]) {
     for (const r of bg.__QM_BUILD_RULES__(s).filter((x) => x.condition.regexFilter)) {
-      const m = r.condition.regexFilter.match(/^\^https:\/\/[a-z]+\\\.(?:twimg|redd)\\\.(?:com|it)\/(?:[a-z_]+\/)?(.*)$/);
+      const m = r.condition.regexFilter.match(/^\^https:\/\/[a-z]+\\\.(?:twimg|redd|bsky)\\\.(?:com|it|app)\/(?:[a-z_]+\/)*(.*)$/);
       assert.ok(m, 'prefix not literal: ' + r.condition.regexFilter);
       assert.ok(m[1].length <= 30, `variable part too long (${m[1].length}): ${m[1]}`);
       assert.ok(!m[1].includes('|'), 'alternation in regex: ' + m[1]);
@@ -1015,6 +1027,21 @@ test('Threads: same Meta MPDs as Instagram, from its API paths', () => {
   assert.deepStrictEqual([...mpd.matchAll(/FBQualityLabel="(\d+p)"/g)].map((m) => m[1]), ['480p']);
 });
 
+test('Threads images: Data saver trims candidates like Instagram; Highest keeps the largest', () => {
+  const tSettings = (images) => Object.assign({}, CONFIG.pageSettings(CONFIG.DEFAULTS, 'threads'), { images, videoQuality: 'auto', bestAudio: false });
+  const small = pageJSON(plainPage('www.threads.com', tSettings('small'))).parse(IG_PHOTOS);
+  assert.deepStrictEqual(igPhotoWidths(JSON.stringify(small)), [[640, 480, 320, 240, 150], [640, 320], [1440]]);
+  const large = pageJSON(plainPage('www.threads.com', tSettings('large'))).parse(IG_PHOTOS);
+  assert.deepStrictEqual(igPhotoWidths(JSON.stringify(large)), [[3072], [1080], [2048]]);
+  const def = pageJSON(plainPage('www.threads.com', tSettings('default'))).parse(IG_PHOTOS);
+  assert.strictEqual(igPhotoWidths(JSON.stringify(def))[0].length, 9);
+  // API responses too (Highest).
+  const page = loadPage('www.threads.com', STREAM_FILES, { XMLHttpRequest: threadsXhr(IG_PHOTOS), fetch: async () => {} }, tSettings('large'));
+  const xhr = new page.XMLHttpRequest();
+  xhr.open('POST', '/graphql/query');
+  assert.deepStrictEqual(igPhotoWidths(xhr.responseText)[0], [3072]);
+});
+
 section('LinkedIn');
 
 // LinkedIn's Video.js player is handed each video's quality list as JSON
@@ -1339,6 +1366,18 @@ test('images: LinkedIn data saver takes the smallest size that fills the slot; H
   const def = fakeImg(LI_SRCSET, 470);
   loadBridge('www.linkedin.com', {}, { imgs: [def] });
   assert.strictEqual(def.srcset, LI_SRCSET);
+});
+
+test('images: Threads srcset (Highest and Data saver), like Instagram sizes', () => {
+  const big = fakeImg(IG_SRCSET, 210);
+  loadBridge('www.threads.com', { threads_images: 'large' }, { imgs: [big] });
+  assert.strictEqual(big.srcset, `${IG(1080)} 1080w`);
+  const small = fakeImg(IG_SRCSET, 210);
+  loadBridge('www.threads.com', { threads_images: 'small' }, { imgs: [small] });
+  assert.strictEqual(small.srcset, `${IG(150)} 150w`);
+  const def = fakeImg(IG_SRCSET, 210);
+  loadBridge('www.threads.com', {}, { imgs: [def] });
+  assert.strictEqual(def.srcset, IG_SRCSET);
 });
 
 test('images: other hosts, single sizes and switched-off sites are left alone', () => {

@@ -39,6 +39,7 @@
     // Threads
     threads_enabled: true,
     threads_videoQuality: 'max',
+    threads_images: 'default',   // 'large' (Highest) | 'small' (Data saver) | 'default'
 
     // LinkedIn
     linkedin_enabled: true,
@@ -52,6 +53,7 @@
     // Bluesky
     bluesky_enabled: true,
     bluesky_videoQuality: 'max',
+    bluesky_images: 'default',   // 'orig' (Highest: full size) | 'default'
   });
 
   // Video quality values shared by every site:
@@ -89,8 +91,10 @@
       label: 'Threads',
       hosts: ['threads.com', 'threads.net'],
       streamHosts: [],
-      // Same Meta app data as Instagram: MPDs inside API responses.
+      // Same Meta app data as Instagram: MPDs inside API responses, and
+      // photo sizes as "candidates" lists.
       manifestPaths: ['/api/', '/graphql'],
+      imageData: true,
     },
     linkedin: {
       label: 'LinkedIn',

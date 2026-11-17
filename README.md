@@ -10,10 +10,10 @@ A Chrome extension that controls video and image quality on **X**, **Reddit**, *
 | Reddit | ✓ | Highest (original), Data saver, Site default |
 | YouTube | ✓ | — |
 | Instagram | ✓ | Data saver, Site default |
-| Threads | ✓ | — |
+| Threads | ✓ | Highest, Data saver, Site default |
 | LinkedIn | ✓ | Highest, Data saver, Site default |
 | TikTok | ✓ | — |
-| Bluesky | ✓ | — |
+| Bluesky | ✓ | Highest (full size), Site default |
 
 - **Video:** Highest, Up to 1080p / 720p / 480p, Data saver, or Site default.
 - **All sites → Highest / Data saver** sets everything at once.
@@ -21,7 +21,7 @@ A Chrome extension that controls video and image quality on **X**, **Reddit**, *
 
 ## Install
 
-1. Download `quality-manager-1.2.0.zip` from the latest release and unzip it.
+1. Download `quality-manager-1.2.1.zip` from the latest release and unzip it.
 2. Open `chrome://extensions` and turn on **Developer mode**.
 3. Click **Load unpacked** and select the unzipped folder.
 4. Reload any open X, Reddit, YouTube, Instagram, Threads, LinkedIn, TikTok or Bluesky tabs.

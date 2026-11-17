@@ -1,6 +1,6 @@
 // Service worker: turns settings into declarativeNetRequest redirect rules
 // (one module per site in ./sites).
-importScripts('../shared/config.js', 'sites/x.js', 'sites/reddit.js');
+importScripts('../shared/config.js', 'sites/x.js', 'sites/reddit.js', 'sites/bluesky.js');
 
 const CONFIG = self.QM_CONFIG;
 const DEFAULTS = CONFIG.DEFAULTS;

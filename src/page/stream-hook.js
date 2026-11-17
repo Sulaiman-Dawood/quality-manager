@@ -48,17 +48,23 @@
     return !!(s && s.enabled && (s.videoQuality !== 'auto' || s.bestAudio || trimImages()));
   }
 
-  function trimImages() {
+  // 'small' (Data saver) or 'large' (Highest) when photo-size lists should
+  // be trimmed on this site; null otherwise.
+  function imageTrimMode() {
     const s = current();
-    return !!(s && s.enabled && s.imageData && s.images === 'small');
+    if (!s || !s.enabled || !s.imageData) return null;
+    return s.images === 'small' || s.images === 'large' ? s.images : null;
+  }
+  function trimImages() {
+    return imageTrimMode() !== null;
   }
 
-  // ---- Instagram image data saver ------------------------------------------
-  // Photos have no srcset on Instagram: the app picks one URL from each
-  // photo's "candidates" list in its API data (often 1080px or far larger,
-  // for a ~470px slot). With Data saver, drop every candidate wider than
-  // IMAGE_CAP so the app can only pick a small one. A list with nothing
-  // small enough keeps just its smallest entry, so no photo goes missing.
+  // ---- Instagram / Threads photo sizes ---------------------------------------
+  // The app picks one URL from each photo's "candidates" list in its API
+  // data (often 1080px or far larger, for a ~470px slot). With Data saver,
+  // drop every candidate wider than IMAGE_CAP so the app can only pick a
+  // small one; a list with nothing small enough keeps just its smallest
+  // entry, so no photo goes missing. With Highest, keep only the largest.
   const IMAGE_CAP = 640;
 
   // End index (exclusive) of the JSON array starting at text[start] === '['.
@@ -81,8 +87,9 @@
     return c && typeof c === 'object' && typeof c.url === 'string' && c.width > 0;
   }
 
-  function trimImageCandidates(text) {
+  function trimImageCandidates(text, mode) {
     if (typeof text !== 'string' || !text.includes('"candidates":')) return { text, changed: false };
+    mode = mode || 'small';
     const KEY = '"candidates":';
     let out = '';
     let from = 0;
@@ -96,8 +103,13 @@
       try {
         const list = JSON.parse(text.slice(open, end));
         if (Array.isArray(list) && list.length > 1 && list.every(isCandidate)) {
-          let keep = list.filter((c) => c.width <= IMAGE_CAP);
-          if (!keep.length) keep = [list.reduce((a, b) => (b.width < a.width ? b : a))];
+          let keep;
+          if (mode === 'large') {
+            keep = [list.reduce((a, b) => (b.width > a.width ? b : a))];
+          } else {
+            keep = list.filter((c) => c.width <= IMAGE_CAP);
+            if (!keep.length) keep = [list.reduce((a, b) => (b.width < a.width ? b : a))];
+          }
           if (keep.length < list.length) replacement = JSON.stringify(keep);
         }
       } catch (_) { /* not plain JSON here; leave it */ }
@@ -216,7 +228,7 @@
     JSON.parse = function parse(text, reviver) {
       if (typeof text === 'string' && text.length > 200 && trimImages() && text.includes('"candidates":')) {
         try {
-          const r = trimImageCandidates(text);
+          const r = trimImageCandidates(text, imageTrimMode());
           if (r.changed) text = r.text;
         } catch (_) { /* parse the original */ }
       }
@@ -304,7 +316,7 @@
           if (r !== null) { text = r; changed = true; }
         }
         if (trimImages()) {
-          const r = trimImageCandidates(text);
+          const r = trimImageCandidates(text, imageTrimMode());
           if (r.changed) { text = r.text; changed = true; }
         }
         return changed ? text : null;

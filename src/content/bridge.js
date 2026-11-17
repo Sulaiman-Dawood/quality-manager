@@ -20,6 +20,7 @@
   const IMAGE_SITES = {
     reddit: { key: 'reddit_images', hosts: ['preview.redd.it'] },
     instagram: { key: 'instagram_images', hosts: ['cdninstagram.com', 'fbcdn.net'] },
+    threads: { key: 'threads_images', hosts: ['cdninstagram.com', 'fbcdn.net'] },
     // LinkedIn's lists are sparse (160, 480, 800, 1200...), so "no wider
     // than shown" could drop a 470px photo to 160px. Data saver takes the
     // smallest size that still fills the slot instead.
@@ -185,7 +186,7 @@
   }
   setInterval(() => { if (!document.hidden && (badgeOn() || badges.size)) refreshAllBadges(); }, 700);
 
-  // ---- Image size picker (Reddit, Instagram, LinkedIn) ------------------------------
+  // ---- Image size picker (Reddit, Instagram, Threads, LinkedIn) ------------------------------
   // Each image comes with a srcset: the site's list of sizes, every one a
   // signed URL (so sizes can't be made up). The browser normally picks by
   // display size and screen density; here the extension picks instead:
