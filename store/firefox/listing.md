@@ -108,6 +108,8 @@ Tick "This add-on has a privacy policy" and paste the text of `PRIVACY.md`.
 
 ## 5. Version notes (for each new version)
 
+1.3.1: Improved Firefox compatibility for Shadow DOM-based players and removed unsupported Shadow DOM API usage.
+
 1.3.0: First Firefox release. Video quality on 8 sites, image options on X, Reddit, Instagram, Threads, LinkedIn and Bluesky, and a resolution badge.
 
 ## After submitting
