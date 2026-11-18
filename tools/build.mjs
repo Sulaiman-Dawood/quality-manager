@@ -70,12 +70,24 @@ const content = INCLUDE.flatMap(files).map((name) => ({ name, data: readFileSync
 const json = (m) => Buffer.from(JSON.stringify(m, null, 2) + '\n');
 mkdirSync(path.join(ROOT, 'dist'), { recursive: true });
 
+function firefoxContent(entries) {
+  return entries.map((entry) => {
+    if (entry.name !== 'src/content/bridge.js') return entry;
+    const source = entry.data.toString('utf8').replace(
+      /  function shadowOf\(el\) \{\s*try \{\s*if \(typeof chrome !== 'undefined' && chrome\.dom && chrome\.dom\.openOrClosedShadowRoot\) return chrome\.dom\.openOrClosedShadowRoot\(el\);\s*\} catch \(_\) \{\}\s*return el\.shadowRoot \|\| null;\s*\}/,
+      "  function shadowOf(el) {\n    return el.shadowRoot || null;\n  }",
+    );
+    return { name: entry.name, data: Buffer.from(source) };
+  });
+}
+
 const out = [
   [`quality-manager-${manifest.version}.zip`, manifest],
   [`quality-manager-${manifest.version}-firefox.zip`, firefoxManifest(manifest)],
 ];
 for (const [file, m] of out) {
-  const buf = zip([{ name: 'manifest.json', data: json(m) }, ...content]);
+  const entries = file.endsWith('-firefox.zip') ? firefoxContent(content) : content;
+  const buf = zip([{ name: 'manifest.json', data: json(m) }, ...entries]);
   writeFileSync(path.join(ROOT, 'dist', file), buf);
   console.log(`dist/${file}  ${content.length + 1} files, ${Math.round(buf.length / 1024)} KB`);
 }

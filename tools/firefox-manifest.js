@@ -5,6 +5,7 @@
 // - Firefox needs an add-on ID, and AMO asks what data the add-on collects
 //   (none).
 // - Content scripts that run in the page's own world need Firefox 128+.
+// - The data collection declaration requires Firefox 140+ (Android 142+).
 'use strict';
 
 const GECKO_ID = '{fc115e24-c166-42f9-9a74-9da36011f3fe}';
@@ -22,8 +23,11 @@ function firefoxManifest(chrome) {
   m.browser_specific_settings = {
     gecko: {
       id: GECKO_ID,
-      strict_min_version: '128.0',
+      strict_min_version: '140.0',
       data_collection_permissions: { required: ['none'] },
+    },
+    gecko_android: {
+      strict_min_version: '142.0',
     },
   };
   return m;

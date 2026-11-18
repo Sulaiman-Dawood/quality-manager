@@ -1470,6 +1470,8 @@ test('Firefox manifest: background scripts match what the service worker imports
   for (const f of BACKGROUND_SCRIPTS) assert.ok(fs.existsSync(path.join(SRC, '..', f)), f);
   assert.ok(!ff.background.service_worker && ff.browser_specific_settings.gecko.id);
   assert.deepStrictEqual(ff.browser_specific_settings.gecko.data_collection_permissions, { required: ['none'] });
+  assert.strictEqual(ff.browser_specific_settings.gecko.strict_min_version, '140.0');
+  assert.strictEqual(ff.browser_specific_settings.gecko_android.strict_min_version, '142.0');
   assert.ok(!chromeManifest.browser_specific_settings, 'the Chrome manifest stays Chrome-only');
   assert.strictEqual(ff.version, chromeManifest.version);
 });
